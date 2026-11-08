@@ -128,6 +128,7 @@ h3{font:600 16px/1.2 var(--display);letter-spacing:.03em;text-transform:uppercas
 .chip.X{background:repeating-linear-gradient(135deg,#5d6b78 0 5px,#4b5864 5px 10px);color:#fff;font-size:12px}
 .chip.plan.X{color:#5d6b78}
 .chip.O{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.chip.O.six{font-size:11.5px;line-height:1;padding:1px 0;letter-spacing:.03em;color:var(--ink);border-style:solid;border-color:var(--muted);display:flex;flex-direction:column;justify-content:center;min-height:23px}
 .chip.plan{background:transparent !important;border:2px dashed currentColor}
 .chip.plan.D{color:#a07c00}.chip.plan.E{color:var(--eve)}.chip.plan.N{color:var(--night)}.chip.plan.I{color:var(--irr)}.chip.plan.L{color:var(--leave)}
 :root[data-theme="dark"] .chip.plan.D{color:var(--day)}
@@ -666,6 +667,7 @@ function migrate(st){
     st.settings.night = "start"; st.settings.anchor = "2026-10-26"; st.settings.v = 2;
     for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
   }
+  for(const k in st.shifts){ const s = st.shifts[k]; if(s.auto === "six" && s.note === "Must be off: 6 in a row") s.note = ""; }
   // RTG + tug / RTG + fork used to be logged as a 4-hour part upgrade; payslips pay the whole shift at Grade 4.
   for(const k in st.shifts){
     const s = st.shifts[k];
@@ -882,8 +884,8 @@ function enforceSixDay(protect){
     run++;
     if(run === 6){
       const nx = add(k,1), ex = S.shifts[nx];
-      if(!ex || (!isWorkDay(ex))){ if(!ex){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"Must be off: 6 in a row" }; added.push(nx); } }
-      else if(ex.status !== "worked" && !keep.has(nx)){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"Must be off: 6 in a row" }; added.push(nx); }
+      if(!ex || (!isWorkDay(ex))){ if(!ex){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"" }; added.push(nx); } }
+      else if(ex.status !== "worked" && !keep.has(nx)){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"" }; added.push(nx); }
       else blocked.push(nx);
       run = 0; if(S.shifts[nx] && S.shifts[nx].auto === "six") k = nx;
     }
@@ -893,7 +895,7 @@ function enforceSixDay(protect){
 function persist(protect){
   const r = enforceSixDay(protect);
   const fresh = r.added.filter(k => k >= add(todayKey(), -14));
-  if(fresh.length) ruleMsg = `${fresh.map(nice).join(", ")} set to Off (6 in a row)`;
+  if(fresh.length) ruleMsg = `${fresh.map(nice).join(", ")}: 6 and out`;
   else if(r.blocked.some(k => k >= add(todayKey(), -14))) ruleMsg = `Heads up: ${r.blocked.filter(k => k >= add(todayKey(), -14)).map(nice).join(", ")} would be a 7th shift in a row`;
   if(ruleMsg) setTimeout(() => { if(ruleMsg) toast(""); }, 60);
   S.updatedAt = Date.now(); lsSave();
@@ -955,7 +957,8 @@ function toast(t){ const el=$("toast"); const msg=[t, ruleMsg].filter(Boolean).j
 function chipHTML(sh){
   if(!sh) return "";
   const plan = sh.status!=="worked" && sh.type!=="O" ? " plan" : "";
-  const letter = sh.type==="O" ? (sh.auto==="six" ? "off" : "–") : LETTER(sh.type);
+  if(sh.type==="O" && sh.auto==="six") return `<div class="chip O six">6 &amp;<br>OUT</div>`;
+  const letter = sh.type==="O" ? "–" : LETTER(sh.type);
   return `<div class="chip ${sh.type}${plan}">${letter}</div>`;
 }
 
@@ -1029,7 +1032,7 @@ function renderWeek(){
     const tag = sh ? `<div class="tag chip ${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}">${sh.type==="O"?"–":LETTER(sh.type)}</div>` : `<div class="tag chip O">·</div>`;
     const pn = panelFor(k);
     const scH = schoolHol(k);
-    const sub = (sh && sh.job && JOB(sh.job) ? JOB(sh.job).name + " · " : "") + (sh ? (TIMES[sh.type] ? timesFor(k, sh.type) : sh.type==="X" ? "Scratched: " + (sh.scr||"D").split("").map(c=>NAMES[c].toLowerCase()).join(", ") : NAMES[sh.type]) + (sh.ext?` · +${sh.ext}h`:"") : "Nothing entered") + (pn ? ` · panel ${NAMES[pn].toLowerCase()}` : "") + (scH ? " · school hols" : "");
+    const sub = (sh && sh.job && JOB(sh.job) ? JOB(sh.job).name + " · " : "") + (sh ? (TIMES[sh.type] ? timesFor(k, sh.type) : sh.type==="X" ? "Scratched: " + (sh.scr||"D").split("").map(c=>NAMES[c].toLowerCase()).join(", ") : sh.type==="O" && sh.auto==="six" ? "6 and out (worked 6 in a row)" : NAMES[sh.type]) + (sh.ext?` · +${sh.ext}h`:"") : "Nothing entered") + (pn ? ` · panel ${NAMES[pn].toLowerCase()}` : "") + (scH ? " · school hols" : "");
     html += `<button class="li" data-k="${k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%">
       ${tag}<div><div class="t">${nice(k)}${hol?` <span class="status hs-${hol}">${holBadge(hol)}${hol}</span>`:""}</div><div class="s">${esc(sub)}${sh&&sh.note?" · "+esc(sh.note):""}</div></div>
       <div class="amt num">${c?money(c.gross):""}${sh&&"DEN".includes(sh.type)?`<div><span class="status${sh.status==="worked"?" w":""}">${sh.status==="worked"?"Worked":"Planned"}</span></div>`:""}</div>
