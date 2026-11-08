@@ -650,6 +650,18 @@ const JOBS = [
   {id:"rtgfork", name:"RTG + fork",              g:4}
 ];
 const JOB = id => JOBS.find(j => j.id === id);
+// Hours at each grade for a shift: {2:4, 4:4} etc.
+function gradeHours(g, sh, sg){ g = Number(g)||2; sh = Number(sh)||0; sg = Number(sg)||g; const o = {}; o[g] = (o[g]||0) + 8 - sh; if(sh) o[sg] = (o[sg]||0) + sh; return JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]])); }
+// Work out the job from what the payslip paid: whole shift G4 = RTG + tug, whole shift G3 = fork + fork,
+// half the shift upgraded from G2 = lash work-through (RTG at G4, fork at G3), G3 + G4 = RTG + fork.
+// Grade 2 all shift could be tug or lash, so that's left for you to pick.
+function jobFromPay(g, sh, sg, current){
+  const paid = gradeHours(g, sh, sg);
+  if(current && JOB(current)){ const j = JOB(current); if(gradeHours(j.g, j.sh, j.sg) === paid) return current; }
+  for(const id of ["rtgtug","fork","lashwt","lashfwt","rtgfork"]){ const j = JOB(id); if(gradeHours(j.g, j.sh, j.sg) === paid) return id; }
+  if(paid === gradeHours(3, 4, 4) || paid === gradeHours(4, 4, 3)) return "rtgfork";
+  return "";
+}
 const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork"};
 const LETTER = t => t==="L" ? "R" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
 const PANEL_SHORT = {D:"day",E:"eve",N:"ngt",I:"irr"};
@@ -751,6 +763,8 @@ function migrate(st){
     for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
   }
   for(const k in st.shifts){ const s = st.shifts[k]; if(s.auto === "six" && s.note === "Must be off: 6 in a row") s.note = ""; }
+  // shifts brought in from payslips before jobs were worked out: name the job from the pay
+  for(const k in st.shifts){ const s = st.shifts[k]; if(s.src === "slip" && !s.job && "DEN".includes(s.type)){ const j = jobFromPay(s.grade, s.splitH, s.splitGrade); if(j) s.job = j; } }
   // RTG + tug / RTG + fork used to be logged as a 4-hour part upgrade; payslips pay the whole shift at Grade 4.
   for(const k in st.shifts){
     const s = st.shifts[k];
@@ -2240,7 +2254,8 @@ $("impApply").onclick = () => {
     if(r.splitH){ base.splitH = r.splitH; base.splitGrade = r.splitGrade; }
     if(r.type === "X") base.scr = r.scr || base.scr || defaultScr(r.k);
     if(r.type === "A"){ if(r.nopay) base.nopay = true; else delete base.nopay; }
-    if(r.job) base.job = r.job; else if(r.fromSlip) delete base.job;
+    if(r.job) base.job = r.job;
+    else if(r.fromSlip){ const j = "DEN".includes(r.type) ? jobFromPay(base.grade, r.splitH, r.splitGrade, base.job) : ""; if(j) base.job = j; else delete base.job; }
     if(r.fromSlip && "DEN".includes(r.type)){ base.meal = !!r.meal; if(!r.splitH){ delete base.splitH; delete base.splitGrade; } if(!r.ext){ base.ext = 0; delete base.exGrade; } }
     if(JSON.stringify(base) !== JSON.stringify(ex||null)){ S.shifts[r.k] = base; n++; }
   });
