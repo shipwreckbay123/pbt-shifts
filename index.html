@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PBT Shifts &amp; Pay</title>
+<meta name="theme-color" content="#12324f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PBT Shifts">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Plan: harbour navy + steel neutrals, hi-vis amber accent; shift colours do the talking.
+   Layout: one phone-width column, summary on top, tabs at the bottom. */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#14202c; --muted:#5b6b7a; --line:#d5dce3;
+  --accent:#e8a317; --accent-ink:#1b1400; --navy:#12324f;
+  --day:#f2c230; --day-ink:#3a2c00;
+  --eve:#ee7b3a; --eve-ink:#ffffff;
+  --night:#3d4aa8; --night-ink:#ffffff;
+  --irr:#7f8c99; --irr-ink:#ffffff;
+  --leave:#3f9b74; --leave-ink:#ffffff;
+  --sick:#c2477a; --sick-ink:#ffffff;
+  --annual:#2f8fd0; --annual-ink:#ffffff;
+  --sch:#e6f5ec; --sch-line:#38a46e;
+  --ph:#d23c3c; --good:#2e8b57; --warn:#b7791f;
+  --display:"Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1620; --surface:#15212d; --ink:#e6edf3; --muted:#93a3b3; --line:#26364a;
+    --navy:#0a1a29; --accent:#f0b43a; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
+    --sch:#16302a; --sch-line:#3fb07a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1620; --surface:#15212d; --ink:#e6edf3; --muted:#93a3b3; --line:#26364a;
+  --navy:#0a1a29; --accent:#f0b43a; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
+  --sch:#16302a; --sch-line:#3fb07a;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+label.btn[aria-disabled="true"]{opacity:.55;pointer-events:none}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px 96px}
+
+header.top{background:var(--navy);color:#fff;padding:14px 16px 16px}
+header.top .row{max-width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
+header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
+header.top h1 span{color:var(--accent)}
+header.top .lead{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.mslink{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:99px;background:var(--accent);color:var(--navy);font-weight:700;font-size:13px;text-decoration:none}
+.mslink:active{opacity:.8}
+.pill{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.12);white-space:nowrap}
+.pill.ok{background:rgba(46,139,87,.35)}
+.pill.local{background:rgba(232,163,23,.3)}
+.summary{max-width:540px;margin:12px auto 0;display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px}
+.summary .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
+.summary .v{font:600 26px/1.1 var(--display)}
+.summary .big .v{font-size:34px;color:var(--accent)}
+.summary-sub{max-width:540px;margin:6px auto 0;font-size:12px;opacity:.8}
+
+h2{font:700 20px/1.2 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:20px 0 10px;text-wrap:balance}
+h3{font:600 16px/1.2 var(--display);letter-spacing:.03em;text-transform:uppercase;margin:16px 0 8px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* month calendar */
+.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px}
+.monthbar h2{margin:0}
+.iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:44px;height:44px;font-size:20px;line-height:1}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.pfs{display:flex;flex-direction:column;gap:8px}
+.pf{--pfc:#138a7e;--pft:rgba(19,138,126,.07);border:2px solid var(--pfc);background:var(--pft);border-radius:12px;padding:4px 4px 5px}
+.pf.pfB{--pfc:#8a4f9e;--pft:rgba(138,79,158,.07)}
+.pf.cur{border-width:3px;box-shadow:0 0 0 3px var(--pft)}
+.pfl{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;font-weight:600;color:var(--pfc);padding:1px 4px 4px;letter-spacing:.02em}
+.pf.cur .pfl b{text-transform:uppercase;letter-spacing:.05em}
+.dow{margin:10px 6px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center}
+.cell{position:relative;aspect-ratio:1/1.12;border-radius:9px;border:1px solid var(--line);background:var(--surface);padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-width:0}
+.cell.out{opacity:.38}
+.cell.today{border:2px solid var(--accent)}
+.cell .d{font-size:12px;align-self:flex-start;line-height:1}
+.cell .chip{width:100%;border-radius:6px;text-align:center;font:700 15px/1.6 var(--display)}
+.cell .hol{position:absolute;top:17px;left:4px;font:700 9px/1 var(--body);color:var(--ph)}
+.cell.sch{background:var(--sch)}
+.cell.sch::after{content:"";position:absolute;left:3px;right:3px;bottom:2px;height:3px;border-radius:2px;background:var(--sch-line)}
+.mini .c.sch{box-shadow:inset 0 -3px 0 var(--sch-line)}
+.cell .pn{position:absolute;top:4px;right:4px;font:600 9px/1 var(--body);letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
+.cell.pw-D{border-top:3px solid var(--day)}.cell.pw-E{border-top:3px solid var(--eve)}
+.cell.pw-N{border-top:3px solid var(--night)}.cell.pw-I{border-top:3px solid var(--irr)}
+.cell.today{border-top-width:2px}
+.cell .ext{position:absolute;bottom:22px;right:3px;font-size:9px;font-weight:600;color:var(--muted)}
+.chip.D{background:var(--day);color:var(--day-ink)}
+.chip.E{background:var(--eve);color:var(--eve-ink)}
+.chip.N{background:var(--night);color:var(--night-ink)}
+.chip.I{background:var(--irr);color:var(--irr-ink)}
+.chip.L{background:var(--leave);color:var(--leave-ink)}
+.chip.S{background:var(--sick);color:var(--sick-ink)}
+.chip.A{background:var(--annual);color:var(--annual-ink);font-size:12px}
+.chip.U{background:transparent;color:#7b5a2e;border:2px dotted #b08850;font-size:12px}
+.chip.X{background:repeating-linear-gradient(135deg,#5d6b78 0 5px,#4b5864 5px 10px);color:#fff;font-size:12px}
+.chip.plan.X{color:#5d6b78}
+.chip.O{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.chip.plan{background:transparent !important;border:2px dashed currentColor}
+.chip.plan.D{color:#a07c00}.chip.plan.E{color:var(--eve)}.chip.plan.N{color:var(--night)}.chip.plan.I{color:var(--irr)}.chip.plan.L{color:var(--leave)}
+:root[data-theme="dark"] .chip.plan.D{color:var(--day)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip.plan.D{color:var(--day)}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:10px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px}
+
+/* lists */
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .tag{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font:700 16px var(--display)}
+.li .t{font-weight:500}
+.li .s{font-size:12px;color:var(--muted)}
+.li .amt{font-weight:600;text-align:right}
+.status{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.status.w{background:rgba(46,139,87,.14);border-color:rgba(46,139,87,.4);color:var(--good)}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+td.r,th.r{text-align:right}
+tr.total td{font-weight:600;border-bottom:0}
+.tablebox{overflow-x:auto}
+
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font:600 24px/1.15 var(--display)}
+.kpi.hl{background:var(--navy);color:#fff;border-color:var(--navy)}
+.kpi.hl .k{color:rgba(255,255,255,.75)}
+.kpi.hl .v{color:var(--accent)}
+.note{font-size:13px;padding:10px 12px;border-radius:10px;background:rgba(232,163,23,.12);border:1px solid rgba(232,163,23,.35)}
+
+/* year */
+.year{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:380px){.year{grid-template-columns:repeat(2,1fr)}}
+.mini h4{margin:0 0 4px;font:600 13px var(--display);text-transform:uppercase;letter-spacing:.05em}
+.mini .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini .c{aspect-ratio:1;border-radius:2px;background:var(--line);border:0;padding:0}
+.mini .c.blank{background:transparent}
+.mini .c.D{background:var(--day)}.mini .c.E{background:var(--eve)}.mini .c.N{background:var(--night)}
+.mini .c.I{background:var(--irr)}.mini .c.L{background:var(--leave)}.mini .c.S{background:var(--sick)}.mini .c.A{background:var(--annual)}.mini .c.U{background:transparent;outline:1.5px dotted #b08850}.mini .c.X{background:repeating-linear-gradient(135deg,#5d6b78 0 2px,#8795a1 2px 4px)}.mini .c.O{background:transparent;outline:1px solid var(--line)}
+.mini .c.plan{opacity:.45}
+.mini .c.ph{box-shadow:inset 0 0 0 1.5px var(--ph)}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label,.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+select,input[type=text],input[type=date],input[type=number],textarea{width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px}
+textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.seg{display:grid;gap:6px}
+.seg.c3{grid-template-columns:repeat(3,1fr)}
+.seg.c2{grid-template-columns:repeat(2,1fr)}
+.seg button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:500}
+.seg button[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:600}
+.seg button.sD[aria-pressed="true"]{background:var(--day);color:var(--day-ink);border-color:var(--day)}
+.seg button.sE[aria-pressed="true"]{background:var(--eve);color:#fff;border-color:var(--eve)}
+.seg button.sN[aria-pressed="true"]{background:var(--night);color:#fff;border-color:var(--night)}
+.seg button.sI[aria-pressed="true"]{background:var(--irr);color:#fff;border-color:var(--irr)}
+.seg button.sL[aria-pressed="true"]{background:var(--leave);color:#fff;border-color:var(--leave)}
+.seg button.sS[aria-pressed="true"]{background:var(--sick);color:#fff;border-color:var(--sick)}
+.seg button.sA[aria-pressed="true"]{background:var(--annual);color:#fff;border-color:var(--annual)}
+.seg button.sX[aria-pressed="true"]{background:#4b5864;color:#fff;border-color:#4b5864}
+.scrbar{font-size:12px;opacity:.9;margin-top:4px}
+#shJob button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.scrbar b.warn{color:#ffcf6b}.scrbar b.over{color:#ff8a8a}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:20px}
+.stepper output{min-width:56px;text-align:center;font:600 22px var(--display)}
+.check{display:flex;align-items:center;gap:10px;min-height:44px}
+.check input{width:22px;height:22px;accent-color:var(--navy)}
+.btn{min-height:46px;border-radius:11px;border:1px solid var(--line);background:var(--surface);padding:0 16px;font-weight:600}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.dark{background:var(--navy);color:#fff;border-color:var(--navy)}
+.btn.danger{color:var(--ph)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns .btn{flex:1}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(5,12,20,.55);display:none;z-index:20}
+.scrim.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:92%;overflow:auto;background:var(--bg);border-radius:18px 18px 0 0;transform:translateY(105%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+.sheet.open{transform:none;visibility:visible;transition:transform .22s ease}
+.sheet .in{max-width:540px;margin:0 auto;padding:16px 16px 28px;display:flex;flex-direction:column;gap:14px}
+.sheet .grab{width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto}
+.sheet h2{margin:0}
+.preview{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.preview .v{font:700 30px var(--display);color:var(--ink)}
+@media (prefers-reduced-motion: reduce){.sheet{transition:none}}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:10}
+nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav.tabs button{background:none;border:0;min-height:58px;font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
+.view{display:none}
+.view.on{display:block}
+.toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+.empty{text-align:center;padding:18px 8px;color:var(--muted)}
+details.imp{padding:12px 14px}
+details.imp > summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
+details.imp .btn{min-height:40px;font-size:14px}
+.eofy .big{font:700 34px/1.1 var(--display)}
+.eofy .bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px;position:relative}
+.eofy .bar i{display:block;height:100%;background:var(--good)}
+.eofy .bar i.warn{background:var(--warn)}.eofy .bar i.over{background:var(--ph)}
+.alarm{margin-top:16px;padding:16px;border-radius:14px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.alarm.warn{background:#c26a00}.alarm.over{background:#c62828}
+.alarm .h{font:700 22px/1.2 var(--display);letter-spacing:.02em}
+.alarm .v{font:700 30px/1.1 var(--display);margin:6px 0}
+.alarm .s{font-size:14px;line-height:1.45;opacity:.95}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+.alarm.over{animation:pulse 1.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.alarm.over{animation:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="row">
+    <div class="lead">
+      <h1>PBT <span>Shifts</span> &amp; Pay</h1>
+      <a class="mslink" href="https://dpw.portal.tamblawfm.net/Microster.SelfService/Default.aspx" target="_blank" rel="noopener">Microster ↗</a>
+    </div>
+    <span id="sync" class="pill">Loading…</span>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="summary-sub num" id="summarySub"></div>
+  <div class="summary-sub num scrbar" id="scrBar"></div>
+</header>
+
+<main class="wrap">
+  <!-- CALENDAR -->
+  <section id="v-cal" class="view on" aria-label="Calendar">
+    <div id="taxAlarm" hidden></div>
+    <div id="eofyCard" class="card" style="margin-top:16px"></div>
+    <div class="monthbar">
+      <button class="iconbtn" id="mPrev" aria-label="Previous month">‹</button>
+      <h2 id="mTitle">Month</h2>
+      <button class="iconbtn" id="mNext" aria-label="Next month">›</button>
+    </div>
+    <div class="dow"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+    <div id="mGrid" class="pfs"></div>
+    <div class="legend">
+      <span><i style="background:var(--day)"></i>Day</span>
+      <span><i style="background:var(--eve)"></i>Evening</span>
+      <span><i style="background:var(--night)"></i>Night</span>
+      <span><i style="background:var(--irr)"></i>Irregular</span>
+      <span><i style="background:var(--leave)"></i>RDO</span>
+      <span><i style="background:var(--sick)"></i>Sick</span>
+      <span><i style="background:var(--annual)"></i>Annual leave</span>
+      <span><i style="border:2px dotted #b08850"></i>Left off</span>
+      <span><i style="background:repeating-linear-gradient(135deg,#5d6b78 0 3px,#8795a1 3px 6px)"></i>Scratch</span>
+      <span><i style="border:2px dashed var(--muted)"></i>Planned (dashed)</span>
+      <span style="color:var(--ph);font-weight:600">PH / CPD = holiday</span>
+      <span><i style="background:var(--sch);border-bottom:3px solid var(--sch-line)"></i>School holidays</span>
+    </div>
+    <h2>This week</h2>
+    <div class="card"><div class="list" id="weekList"></div></div>
+    <p class="small muted">Tap any day to add or change a shift. Solid = worked, dashed = planned.</p>
+    <details id="impBox" class="card imp" style="margin-top:18px">
+      <summary>Add from a payslip or Microster screenshot</summary>
+      <div id="impWrap" class="stack" style="margin-top:10px">
+      <label class="btn dark" id="impPick" for="impFile" style="display:flex;align-items:center;justify-content:center;text-align:center">Add shifts from a Microster screenshot</label>
+      <input type="file" id="impFile" accept="image/*" multiple class="vh">
+      <div id="impStatus" class="small muted">Screenshot your "My Roster" month in Microster, then pick it here. You can pick a few months at once.</div>
+      <div id="impList" class="list"></div>
+      <label class="btn" id="slipPick" for="slipFile" style="display:flex;align-items:center;justify-content:center;text-align:center">Add payslip PDFs</label>
+      <input type="file" id="slipFile" accept="application/pdf,.pdf" multiple class="vh">
+      <div class="small muted">Payslips are read on your phone and never sent anywhere. Only the shifts and pay totals are kept, not your name, address or bank details.</div>
+      <details id="pasteBox">
+        <summary class="small" style="cursor:pointer;font-weight:600">Or paste shift text</summary>
+        <div class="stack" style="margin-top:8px">
+          <textarea id="pasteText" aria-label="Shift text" placeholder="2026-10-14 E G4&#10;2026-10-23 D G4 +4h@G2&#10;2026-10-12 RDO"></textarea>
+          <div class="small muted">One day per line: date, then D, E, N, RDO, SICK, AL (annual leave day), ALW (annual leave week), SCR, LEFTOFF, or CLEAR to empty the day. Optional: a job (TUG, LASH, LASHWT, LASHFWT, RTG+TUG, FORK, RTG+FORK), G4 for the grade, SCR E for which shift you scratched, +4h for an extension (+4h@G2 at another grade), 4h@G2 for part of the shift at another grade.</div>
+          <button class="btn" id="pasteGo" type="button">Check pasted shifts</button>
+        </div>
+      </details>
+      <div class="btns" id="impBtns" hidden><button class="btn primary" id="impApply" type="button">Add to my calendar</button><button class="btn" id="impCancel" type="button">Cancel</button></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- PAY -->
+  <section id="v-pay" class="view" aria-label="Pay">
+    <div class="monthbar">
+      <button class="iconbtn" id="fPrev" aria-label="Previous fortnight">‹</button>
+      <div style="text-align:center">
+        <div class="lbl">Pay fortnight</div>
+        <div id="fTitle" class="num" style="font:600 18px var(--display)"></div>
+      </div>
+      <button class="iconbtn" id="fNext" aria-label="Next fortnight">›</button>
+    </div>
+    <div class="kpis" style="margin-top:12px" id="payKpis"></div>
+    <div id="payNote" style="margin-top:10px"></div>
+    <div id="gapBox" class="card" style="margin-top:12px" hidden></div>
+    <h2>Week by week</h2>
+    <div class="card tablebox"><table class="num" id="weekTable"></table></div>
+    <h2>Shift by shift</h2>
+    <div class="card"><div class="list" id="payList"></div></div>
+    <h2>Financial year so far</h2>
+    <div class="card tablebox"><table class="num" id="fyTable"></table></div>
+    <details class="card" style="margin-top:16px">
+      <summary style="font-weight:600;cursor:pointer">How pay is worked out</summary>
+      <div class="small stack" style="margin-top:10px">
+        <div>Rates come from the DP World Sydney Enterprise Agreement 2024 (VSE Operations): clause 11 hourly rates by grade, shift penalties (14.4), overtime and extensions (15.2, Part B 1.18.6), public holiday and closed port day rates (30.5), consolidated allowance per shift (18.7), meal allowance (11.6.2) and the VSE minimum salary (18.5).</div>
+        <div>Each shift is 8 paid hours. Night shifts are dated by the day they start, the same as your payslips. A Saturday-start night is ×2.5 and a Sunday-start night is ×2.</div>
+        <div>Extra hours (extensions or early starts) are ×2 Mon–Sat and ×2.5 Sunday. On a public holiday or closed port day, extra hours use the holiday rate. That last part is my best reading of the agreement, so check it against your payslip.</div>
+        <div>Six in a row: you can't work more than six shifts in a row, sick days included (Part B 1.11.1). After six, the next day is set to Off automatically. If you put a shift there yourself, it's kept and you get a warning.</div>
+        <div>Scratches: up to 27 scratched shifts per 28-day period (two pay fortnights). Go over 27 and the VSE minimum salary doesn't apply for that period (18.1.3, 18.3.1). Scratch days aren't paid.</div>
+        <div>A sick day (personal/carer's leave) pays 7 hours at $55.50 ($388.51), the same as your payslips show.</div>
+        <div>Meal allowance is added automatically where your payslips show it: shifts paid at the Sunday rate, shifts with an extension, and holidays worked. You can untick it on any shift.</div>
+        <div>Holidays (Part B 1.21.4): a closed port day covers its day, evening and the night starting that evening. A public holiday covers the night starting the evening before, then the day and evening. The night starting on the holiday evening is a normal shift.</div>
+        <div>Pay fortnights run Monday to Sunday, matching your payslips (for example 12–25 Oct 2026, paid Thu 29 Oct). If a fortnight's earnings are under the VSE minimum salary, you're paid the minimum and the gap is recovered from later pays (18.5.5).</div>
+        <div>Tax is worked out on gross less meal allowance and VSE PAID, at 2026–27 resident rates plus the 2% Medicare levy. Against your recent payslips it lands within $1–3. Super is 12% of gross, not counting VSE leave pay.</div>
+      </div>
+    </details>
+  </section>
+
+  <!-- YEAR -->
+  <section id="v-year" class="view" aria-label="Year">
+    <div class="monthbar">
+      <button class="iconbtn" id="yPrev" aria-label="Previous year">‹</button>
+      <h2 id="yTitle">Year</h2>
+      <button class="iconbtn" id="yNext" aria-label="Next year">›</button>
+    </div>
+    <div class="seg c2" id="yMode" style="margin-top:12px">
+      <button type="button" data-v="fy" aria-pressed="true">Financial year</button>
+      <button type="button" data-v="cal" aria-pressed="false">Calendar year</button>
+    </div>
+    <div class="card" id="yearMoney" style="margin-top:12px"></div>
+    <div class="card" id="leaveBal" style="margin-top:12px"></div>
+    <div class="card" id="upgBox" style="margin-top:12px"></div>
+    <div class="card" style="margin-top:12px"><table class="num" id="yearCounts"></table></div>
+    <div class="year" id="yearGrid" style="margin-top:14px"></div>
+    <div class="legend">
+      <span><i style="background:var(--day)"></i>Day</span>
+      <span><i style="background:var(--eve)"></i>Evening</span>
+      <span><i style="background:var(--night)"></i>Night</span>
+      <span><i style="background:var(--irr)"></i>Irregular</span>
+      <span><i style="background:var(--leave)"></i>RDO</span>
+      <span><i style="background:var(--sick)"></i>Sick</span>
+      <span><i style="background:var(--annual)"></i>Annual leave</span>
+      <span><i style="border:2px dotted #b08850"></i>Left off</span>
+      <span><i style="background:repeating-linear-gradient(135deg,#5d6b78 0 3px,#8795a1 3px 6px)"></i>Scratch</span>
+      <span><i style="box-shadow:inset 0 0 0 2px var(--ph)"></i>Holiday</span>
+      <span><i style="box-shadow:inset 0 -3px 0 var(--sch-line);background:var(--line)"></i>School holidays</span>
+      <span>Faded = planned</span>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section id="v-set" class="view" aria-label="Setup">
+    <h2>Fill a week or a run of weeks</h2>
+    <div class="card stack">
+      <div class="small muted">For when you know what you're on. Example: a week of evenings, then a week of irregulars.</div>
+      <div class="field"><label for="fillStart">Start (Monday of the week)</label><input type="date" id="fillStart"></div>
+      <div class="field"><label for="fillPattern">Pattern</label>
+        <select id="fillPattern">
+          <option value="week">One week, same shift each day</option>
+          <option value="custom">Custom pattern (letters)</option>
+          <option value="pbt16">PBT General Operations roster (16 weeks, from the EBA)</option>
+        </select>
+      </div>
+      <div id="fillWeekBox" class="stack">
+        <div class="field"><label for="fillShift">Shift</label>
+          <select id="fillShift"><option value="E">Evening</option><option value="D">Day</option><option value="N">Night</option><option value="I">Irregular (find out the day before)</option></select>
+        </div>
+        <div class="field"><label>Days</label>
+          <div class="seg c2" id="fillDays">
+            <button type="button" data-v="mf" aria-pressed="true">Mon–Fri</button>
+            <button type="button" data-v="all" aria-pressed="false">Mon–Sun</button>
+          </div>
+        </div>
+      </div>
+      <div id="fillCustomBox" class="field" hidden>
+        <label for="fillCustom">Letters, one per day from Monday</label>
+        <input type="text" id="fillCustom" placeholder="EEEEEOO IIIIIOO" autocomplete="off" spellcheck="false">
+        <div class="small muted">D day, E evening, N night, I irregular, O off. Spaces are ignored.</div>
+      </div>
+      <div id="fillPbtBox" class="field" hidden>
+        <label for="fillPbtWeek">Which roster week starts on that Monday?</label>
+        <select id="fillPbtWeek"></select>
+        <div class="small muted">D/E days are filled as Irregular so you can set them once allocated.</div>
+      </div>
+      <div class="field" id="fillWeeksBox"><label for="fillWeeks">How many weeks</label><input type="number" id="fillWeeks" min="1" max="104" value="1"></div>
+      <label class="check"><input type="checkbox" id="fillOverwrite"> Replace shifts already entered (otherwise they're kept)</label>
+      <button class="btn primary" id="fillGo">Add to calendar as planned</button>
+    </div>
+
+    <h2>Your details</h2>
+    <div class="card stack">
+      <div class="field"><label for="setGrade">Usual grade</label>
+        <select id="setGrade"></select>
+      </div>
+      <div class="field"><label for="setNight">How night shifts are dated</label>
+        <select id="setNight">
+          <option value="dp">DP World way: Monday's night starts Sunday 10pm</option>
+          <option value="start">The night starts 10pm on the day I tap</option>
+        </select>
+      </div>
+      <div class="field"><label for="setScrAnchor">First day of a 28-day scratch period</label>
+        <input type="date" id="setScrAnchor">
+        <div class="small muted">Scratch periods are two pay fortnights back to back, Monday to Sunday (EBA 18.3.1). If your count looks a fortnight off, move this back or forward 14 days.</div>
+      </div>
+      <div class="field"><label for="setAnchor">First day of any pay fortnight</label>
+        <input type="date" id="setAnchor">
+        <div class="small muted">Pick the Monday a pay period starts on (check a payslip). Pay periods then run every 14 days from it.</div>
+      </div>
+      <label class="check"><input type="checkbox" id="setPhUnworked"> Pay 8 hours at Grade 2 for public holidays and closed port days I don't work (VSE, 30.5)</label>
+    </div>
+
+    <h2>Panel cycle</h2>
+    <div class="card stack">
+      <div class="small muted">Shows your panel week in small letters on each calendar day, with a coloured strip across the top. Worked out from your payslips: blocks run Tuesday to Monday in the order nights, evenings, irregular, days.</div>
+      <label class="check"><input type="checkbox" id="setShowPanel"> Show panel on the calendar</label>
+      <label class="check"><input type="checkbox" id="setShowSchool"> Show NSW public school holidays (Eastern division, 2026–27)</label>
+      <div class="field"><label for="setPanelStart">First day of a week in the cycle (a Tuesday)</label><input type="date" id="setPanelStart"></div>
+      <div class="field"><label for="setPanelCycle">Order of weeks, starting from that day</label>
+        <input type="text" id="setPanelCycle" autocomplete="off" spellcheck="false" placeholder="NEID">
+        <div class="small muted">N nights, E evenings, I irregular, D days. NEID = nights, evenings, irregular, days, then repeat.</div>
+      </div>
+    </div>
+
+    <h2>Payslip extras</h2>
+    <div class="card stack">
+      <div class="field"><label for="setBonus">Bonus per pay (estimate)</label><input type="number" id="setBonus" step="0.01" min="0" inputmode="decimal">
+        <div class="small muted">Your last four payslips had $228–$280. It changes each pay, so this is a guess.</div></div>
+      <div class="field"><label for="setVsePaid">VSE PAID deduction per pay</label><input type="number" id="setVsePaid" step="0.01" min="0" inputmode="decimal">
+        <div class="small muted">Comes out before tax and pays for your self-funded VSE days.</div></div>
+      <div class="field"><label for="setLeavePay">Pay for a self-funded RDO</label><input type="number" id="setLeavePay" step="0.01" min="0" inputmode="decimal">
+        <div class="small muted">Your payslips show 7h × $55.50 = $388.51.</div></div>
+    </div>
+
+    <h2>Holidays</h2>
+    <div class="card stack">
+      <div class="small muted">NSW public holidays for 2026–27 are loaded. Good Friday, Anzac Day and Labour Day are closed port days. Add Picnic Day yourself once it's set.</div>
+      <div class="list" id="holList"></div>
+      <div class="seg" style="grid-template-columns:1.3fr 1fr auto">
+        <input type="date" id="holDate" aria-label="Holiday date">
+        <select id="holType" aria-label="Holiday type"><option value="PH">Public holiday</option><option value="CPD">Closed port day</option></select>
+        <button class="btn" id="holAdd" type="button">Add</button>
+      </div>
+    </div>
+
+    <h2>Pay rates in use</h2>
+    <div class="card tablebox"><table class="num" id="rateTable"></table></div>
+
+    <h2>Get the app</h2>
+    <div class="card stack" id="installCard"></div>
+
+    <h2>Backup</h2>
+    <div class="card stack">
+      <div class="small muted" id="storeNote"></div>
+      <div class="btns"><button class="btn" id="bkCopy">Copy backup</button><button class="btn" id="bkShow">Restore from backup</button></div>
+      <div id="bkBox" class="stack" hidden>
+        <textarea id="bkText" aria-label="Backup text" placeholder="Paste a backup here"></textarea>
+        <button class="btn dark" id="bkRestore">Restore this backup</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Sections"><div class="in" role="tablist">
+  <button role="tab" data-v="cal" aria-selected="true">Calendar</button>
+  <button role="tab" data-v="pay" aria-selected="false">Pay</button>
+  <button role="tab" data-v="year" aria-selected="false">Year</button>
+  <button role="tab" data-v="set" aria-selected="false">Setup</button>
+</div></nav>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+  <div class="in">
+    <div class="grab"></div>
+    <div>
+      <h2 id="shTitle">Day</h2>
+      <div class="small muted" id="shSub"></div>
+      <div class="small muted" id="shPanel"></div>
+    </div>
+    <div class="field"><span class="lbl">Shift</span>
+      <div class="seg c3" id="shType">
+        <button type="button" class="sD" data-v="D">Day</button>
+        <button type="button" class="sE" data-v="E">Evening</button>
+        <button type="button" class="sN" data-v="N">Night</button>
+        <button type="button" class="sI" data-v="I">Irregular</button>
+        <button type="button" class="sL" data-v="L">RDO</button>
+        <button type="button" class="sS" data-v="S">Sick</button>
+        <button type="button" class="sA" data-v="A">Annual leave</button>
+        <button type="button" class="sX" data-v="X">Scratch</button>
+        <button type="button" data-v="U">Left off</button>
+        <button type="button" data-v="O">Off</button>
+      </div>
+    </div>
+    <label class="check" id="shAlWeekBox" hidden><input type="checkbox" id="shAlWeek" checked> <span>Whole week, Monday to Sunday <span class="small muted">(5 paid days, 35 hours)</span></span></label>
+    <div id="shScrBox" class="field" hidden><span class="lbl">Shifts scratched (tap all that apply)</span>
+      <div class="seg c3" id="shScr">
+        <button type="button" class="sD" data-v="D">Day</button>
+        <button type="button" class="sE" data-v="E">Evening</button>
+        <button type="button" class="sN" data-v="N">Night</button>
+      </div>
+      <div class="small muted" id="shScrInfo"></div>
+    </div>
+    <div id="shWorkBox" class="stack">
+      <div class="field"><span class="lbl">Status</span>
+        <div class="seg c2" id="shStatus">
+          <button type="button" data-v="planned">Planned</button>
+          <button type="button" data-v="worked">Worked ✓</button>
+        </div>
+      </div>
+      <div class="field"><span class="lbl">Job (sets the grade for you)</span><div class="seg c2" id="shJob"></div></div>
+      <div class="field"><label for="shGrade">Grade for this shift</label><select id="shGrade"></select></div>
+      <details id="shSplitBox">
+        <summary class="small" style="cursor:pointer;font-weight:600">Part of the shift at another grade</summary>
+        <div class="stack" style="margin-top:8px">
+          <div class="stepper"><button type="button" id="spMinus" aria-label="Fewer hours">−</button><output id="spVal" class="num">0h</output><button type="button" id="spPlus" aria-label="More hours">+</button>
+            <select id="shSplitGrade" aria-label="Grade for those hours" style="flex:1"></select></div>
+          <div class="small muted">Like your payslips on 1 Oct and 15 Oct: 4h at Grade 2 and 4h at Grade 4.</div>
+        </div>
+      </details>
+      <div class="field"><span class="lbl">Extra hours (extension or early start)</span>
+        <div class="stepper"><button type="button" id="exMinus" aria-label="Less">−</button><output id="exVal" class="num">0</output><button type="button" id="exPlus" aria-label="More">+</button>
+          <select id="shExGrade" aria-label="Grade for extra hours" style="flex:1"></select></div>
+      </div>
+      <label class="check"><input type="checkbox" id="shMeal"> <span>Meal allowance <span class="small muted" id="shMealHint"></span></span></label>
+    </div>
+    <div class="field"><label for="shDayType">Day type</label>
+      <select id="shDayType"><option value="">Normal</option><option value="PH">Public holiday</option><option value="CPD">Closed port day</option></select>
+    </div>
+    <div class="field"><label for="shNote">Note</label><input type="text" id="shNote" placeholder="e.g. RTG, ship name, swapped" autocomplete="off"></div>
+    <div class="card preview" id="shPreview"></div>
+    <div class="card stack" id="shWorth" hidden></div>
+    <div class="btns">
+      <button class="btn primary" id="shSave">Save</button>
+      <button class="btn" id="shWeek">Same to end of panel week</button>
+    </div>
+    <div class="btns">
+      <button class="btn danger" id="shClear">Clear day</button>
+      <button class="btn" id="shClose">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ============ EBA DATA (DP World Sydney Enterprise Agreement 2024) ============ */
+const STEPS = [ // clause 11.3 hourly rates, 18.7 consolidated allowance, 11.6.2 meal, 18.5.1 VSE Ops minimum salary
+  {from:"2024-04-23", hr:{1:33.48,2:36.78,3:39.62,4:42.85,5:44.15,6:48.80}, wk:{1:1171.79,2:1287.31,3:1386.75,4:1499.69,5:1545.20,6:1707.91}, ca:50.18, meal:23.91, min:87841.80},
+  {from:"2025-02-01", hr:{1:35.82,2:39.35,3:42.40,4:45.85,5:47.24,6:52.21}, wk:{1:1253.81,2:1377.42,3:1483.83,4:1604.67,5:1653.36,6:1827.47}, ca:53.69, meal:25.58, min:93990.73},
+  {from:"2026-02-01", hr:{1:37.26,2:40.93,3:44.09,4:47.68,5:49.13,6:54.30}, wk:{1:1303.97,2:1432.51,3:1543.18,4:1668.85,5:1719.50,6:1900.56}, ca:55.84, meal:26.61, min:97750.36},
+  {from:"2027-02-01", hr:{1:38.93,2:42.77,3:46.07,4:49.83,5:51.34,6:56.75}, wk:{1:1362.65,2:1496.98,3:1612.62,4:1743.95,5:1796.88,6:1986.09}, ca:58.35, meal:27.81, min:102149.12}
+];
+const SHIFT_HOURS = 8;
+// Payroll works from the weekly rate ÷ 35 (clauses 11.2, 15.2) and rounds each payslip line to the cent.
+const hrx = (st, g) => st.wk ? st.wk[g] / 35 : st.hr[g];
+const r2 = n => Math.round(n * 100 + 1e-9) / 100;
+const SUPER_RATE = 0.12; // clause 10.5.3
+const NAMES = {D:"Day",E:"Evening",N:"Night",I:"Irregular",L:"RDO",S:"Sick",A:"Annual leave",X:"Scratch",U:"Left off",O:"Off"};
+const TIMES = {D:"6:00am – 2:00pm",E:"2:00pm – 10:00pm",N:"10:00pm – 6:00am"};
+// One-tap jobs. RTG is one 4-hour run per shift (Part B 1.13.2). RTG + tug and RTG + fork pay the
+// whole shift at Grade 4 (clause 11.8.2 — matches the payslips). An RTG or fork work-through while
+// lashing is paid as half the shift at the higher grade (Part B 2.10.1).
+const JOBS = [
+  {id:"tug",     name:"Tug",                     g:2},
+  {id:"lash",    name:"Lash",                    g:2},
+  {id:"lashwt",  name:"Lash + RTG work-through", g:2, sh:4, sg:4},
+  {id:"lashfwt", name:"Lash + fork work-through", g:2, sh:4, sg:3},
+  {id:"rtgtug",  name:"RTG + tug",               g:4},
+  {id:"fork",    name:"Fork + fork",             g:3},
+  {id:"rtgfork", name:"RTG + fork",              g:4}
+];
+const JOB = id => JOBS.find(j => j.id === id);
+const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork"};
+const LETTER = t => t==="L" ? "R" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
+const PANEL_SHORT = {D:"day",E:"eve",N:"ngt",I:"irr"};
+// Panel cycle: from your payslips the blocks run Tuesday to Monday, repeating
+// nights → evenings → irregular → days (nights week starting Tue 27 Oct 2026).
+function panelFor(k){
+  const st = S.settings;
+  const cyc = String(st.panelCycle||"").toUpperCase().replace(/[^DENI]/g,"");
+  if(!st.showPanel || !cyc || !st.panelStart) return "";
+  const n = Math.floor(diffDays(st.panelStart, k)/7);
+  return cyc[((n % cyc.length) + cyc.length) % cyc.length];
+}
+const PBT16 = [ // Part B 1.1 General Operations Roster, Mon..Sun; X = D/E
+  "DDDDDDO","OOIIIIO","EEEEEOD","DDDDDOO","OOIIIEE","OOOOOXX","XXXOOII","IIOOOOO",
+  "DDDDDDO","ONNNNOO","EEEEEOD","DDDDOOO","OOOOIII","IOOOOXX","XXXOOII","IIOEEOO"
+];
+const DEFAULT_HOLS = {
+  "2026-01-01":"PH","2026-01-26":"PH","2026-04-03":"CPD","2026-04-04":"PH","2026-04-05":"PH","2026-04-06":"PH",
+  "2026-04-25":"CPD","2026-04-27":"PH","2026-06-08":"PH","2026-10-05":"CPD","2026-12-25":"PH","2026-12-26":"PH","2026-12-28":"PH",
+  "2027-01-01":"PH","2027-01-26":"PH","2027-03-26":"CPD","2027-03-27":"PH","2027-03-28":"PH","2027-03-29":"PH",
+  "2027-04-25":"CPD","2027-04-26":"PH","2027-06-14":"PH","2027-10-04":"CPD","2027-12-25":"PH","2027-12-26":"PH","2027-12-27":"PH","2027-12-28":"PH"
+};
+// NSW public school holidays, Eastern division: days the kids are home (from the day after the last
+// student day to the day before the first student day, so school development days are included).
+// Source: education.nsw.gov.au term calendars 2026 and 2027.
+const SCHOOL_HOLS = [
+  ["2025-12-20","2026-02-01","Summer"], ["2026-04-03","2026-04-21","Autumn"], ["2026-07-04","2026-07-20","Winter"],
+  ["2026-09-26","2026-10-12","Spring"], ["2026-12-18","2027-02-02","Summer"], ["2027-04-10","2027-04-28","Autumn"],
+  ["2027-07-03","2027-07-19","Winter"], ["2027-09-25","2027-10-10","Spring"], ["2027-12-18","2028-01-28","Summer"]
+];
+function schoolHol(k){ if(S.settings.showSchool === false) return ""; for(const r of SCHOOL_HOLS) if(k >= r[0] && k <= r[1]) return r[2]; return ""; }
+// Resident tax (ATO). Lowest rate 16% in 2025-26, 15% in 2026-27, 14% from 2027-28.
+const TAX = {2026:0.16, 2027:0.15, 2028:0.14}; // key = FY ending year
+
+/* ============ DATE HELPERS (UTC noon-free, string keys) ============ */
+const pad = n => String(n).padStart(2,"0");
+const D = s => { const [y,m,d] = s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const K = dt => dt.getUTCFullYear()+"-"+pad(dt.getUTCMonth()+1)+"-"+pad(dt.getUTCDate());
+const add = (s,n) => { const t = D(s); t.setUTCDate(t.getUTCDate()+n); return K(t); };
+const dow = s => (D(s).getUTCDay()+6)%7; // 0=Mon..6=Sun
+const monday = s => add(s,-dow(s));
+const diffDays = (a,b) => Math.round((D(b)-D(a))/864e5);
+const todayKey = () => { const t = new Date(); return t.getFullYear()+"-"+pad(t.getMonth()+1)+"-"+pad(t.getDate()); };
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOWS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const nice = s => DOWS[dow(s)]+" "+D(s).getUTCDate()+" "+MON[D(s).getUTCMonth()];
+const money = (n,dp=0) => (n<0?"−":"")+"$"+Math.abs(n).toLocaleString("en-AU",{minimumFractionDigits:dp,maximumFractionDigits:dp});
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ============ STATE ============ */
+function blankState(){
+  return { v:2, updatedAt:0, shifts:{}, payslips:{}, hols:{...DEFAULT_HOLS},
+    settings:{ v:2, grade:2, night:"start", anchor:"2026-10-26", phUnworked:true,
+      bonus:240, vsePaid:149.43, leavePay:388.51,
+      panelStart:"2026-10-27", panelCycle:"NEID", showPanel:true, scrAnchor:"2026-10-26", yearMode:"fy" } };
+}
+// From payslips: pay fortnights run Mon–Sun (e.g. 12 Oct – 25 Oct 2026, paid the Thursday after);
+// night shifts are dated by the day they start; meal allowance is tax-free; VSE PAID comes out before tax.
+function migrate(st){
+  if((st.settings.v||1) < 2){
+    st.settings.night = "start"; st.settings.anchor = "2026-10-26"; st.settings.v = 2;
+    for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
+  }
+  // RTG + tug / RTG + fork used to be logged as a 4-hour part upgrade; payslips pay the whole shift at Grade 4.
+  for(const k in st.shifts){
+    const s = st.shifts[k];
+    if((s.job === "rtgtug" || s.job === "rtgfork") && s.splitH === 4 && Number(s.splitGrade) === 4){
+      s.grade = 4; delete s.splitH; delete s.splitGrade;
+    }
+  }
+  return st;
+}
+let S = blankState();
+
+/* ============ PAY ENGINE ============ */
+function step(dateKey){ let s = STEPS[0]; for(const x of STEPS) if(dateKey >= x.from) s = x; return s; }
+// Calendar date a shift starts on (used for penalties + holidays)
+function startDate(dayKey, type){
+  if(type==="N" && S.settings.night==="dp") return add(dayKey,-1);
+  return dayKey;
+}
+// Which holiday a shift belongs to (Part B 1.21.4):
+//  - Closed port day: its day, evening and the night that STARTS on that day (finishing next morning).
+//    The night that starts the evening before is a normal shift.
+//  - Public holiday: the usual DP World day, i.e. the night that starts the evening BEFORE, then day and evening.
+//    The night that starts on the holiday evening belongs to the next day.
+function holDay(type, start){
+  if(type !== "N") return S.hols[start] ? start : "";
+  if(S.hols[start] === "CPD") return start;
+  const next = add(start, 1);
+  if(S.hols[next] === "PH") return next;
+  return "";
+}
+function holFor(type, start){ const d = holDay(type, start); return d ? S.hols[d] : ""; }
+function shiftMult(type, start, hol){
+  if(hol==="CPD") return type==="N" ? 4 : 3.5;
+  if(hol==="PH")  return type==="N" ? 3 : 2.5;
+  const w = dow(start); // 0 Mon .. 5 Sat, 6 Sun
+  if(type==="D") return w===5 ? 2 : w===6 ? 2.5 : 1;
+  if(type==="E") return w===5 ? 2 : w===6 ? 2.5 : 1.5;
+  if(type==="N") return w===5 ? 2.5 : 2; // Sat-start = first shift Sunday ×2.5; Sun-start = first shift Monday ×2
+  return 0;
+}
+function multWhy(type, start, hol){
+  if(hol==="CPD") return "closed port day"; if(hol==="PH") return "public holiday";
+  const w = dow(start), day = ["Mon","Tue","Wed","Thu","Fri","Saturday","Sunday"][w];
+  if(type==="N") return w===5 ? "Saturday-night rate" : w===6 ? "Sunday-start night" : "weekday night";
+  if(w>=5) return day + " rate";
+  return type==="E" ? "weekday evening" : "weekday day";
+}
+function otMult(start, hol){
+  if(hol) return shiftMult("D", start, hol); // holiday rate on extra hours (assumption, flagged in notes)
+  return dow(start)===6 ? 2.5 : 2;
+}
+// Meal allowance, as seen on the payslips: every shift paid at the Sunday rate (Sunday day/evening,
+// Saturday-start night), every shift with an extension, and public holidays / closed port days worked (30.5).
+function autoMeal(type, start, hol, exH){
+  if(hol) return true;
+  if(exH > 0) return true;
+  return shiftMult(type, start, "") === 2.5;
+}
+function calcShift(dayKey, sh){
+  if(!sh || !"DEN".includes(sh.type)) return null;
+  const start = startDate(dayKey, sh.type);
+  const hol = sh.hol !== undefined ? sh.hol : holFor(sh.type, start);
+  const st = step(start);
+  const grade = Number(sh.grade) || S.settings.grade;
+  const rate = hrx(st, grade);
+  const m = shiftMult(sh.type, start, hol);
+  const splitH = Math.min(SHIFT_HOURS, sh.splitH || 0);
+  const splitGrade = Number(sh.splitGrade) || grade;
+  const splitRate = hrx(st, splitGrade);
+  const ordinary = r2((SHIFT_HOURS - splitH) * rate * m) + r2(splitH * splitRate * m);
+  const exH = sh.ext || 0;
+  const exGrade = Number(sh.exGrade) || grade;
+  const exRate = hrx(st, exGrade);
+  const om = otMult(start, hol);
+  const extra = r2(exH * exRate * om);
+  const mealAuto = autoMeal(sh.type, start, hol, exH);
+  const mealOn = sh.meal === undefined ? mealAuto : !!sh.meal;
+  const meal = mealOn ? st.meal : 0;
+  const ca = st.ca;
+  return { start, hol, grade, rate, m, splitH, splitGrade, splitRate, ordinary, exH, exGrade, exRate, om, extra, meal, mealAuto, ca,
+           gross: ordinary + extra + meal + ca };
+}
+function fyEnd(dateKey){ const d = D(dateKey); return d.getUTCMonth() >= 6 ? d.getUTCFullYear()+1 : d.getUTCFullYear(); }
+function annualTax(income, fyE){
+  const low = TAX[fyE] ?? (fyE < 2026 ? 0.16 : 0.14);
+  const b1 = 18200, b2 = 45000, b3 = 135000, b4 = 190000;
+  let t = 0;
+  if(income > b1) t += (Math.min(income,b2)-b1)*low;
+  if(income > b2) t += (Math.min(income,b3)-b2)*0.30;
+  if(income > b3) t += (Math.min(income,b4)-b3)*0.37;
+  if(income > b4) t += (income-b4)*0.45;
+  let lito = 700; // Low income tax offset
+  if(income > 37500) lito -= (Math.min(income,45000)-37500)*0.05;
+  if(income > 45000) lito -= (income-45000)*0.015;
+  t = Math.max(0, t - Math.max(0,lito));
+  return t + income*0.02; // Medicare levy
+}
+// "Worth it?" — what an extra shift adds to the fortnight after tax, comparing the pay with and without it.
+// Planned shifts in that fortnight are counted as if worked, so the answer reflects the pay you're heading for.
+function margRate(annual, fyE){
+  const low = TAX[fyE] ?? (fyE < 2026 ? 0.16 : 0.14);
+  const r = annual > 190000 ? 0.45 : annual > 135000 ? 0.37 : annual > 45000 ? 0.30 : annual > 18200 ? low : 0;
+  return r + 0.02;
+}
+function annualEstimate(k){
+  const fyE = fyEnd(k), fyStart = (fyE-1) + "-07-01";
+  const slips = Object.values(S.payslips||{}).filter(x => x.ytdTaxable && x.to >= fyStart && fyEnd(x.to) === fyE).sort((a,b) => a.to < b.to ? -1 : 1);
+  const last = slips[slips.length-1];
+  if(last){ const days = diffDays(fyStart, last.to) + 1; if(days >= 28) return { amount: last.ytdTaxable / days * 365, from: "payslip" }; }
+  const f = fortnightStart(k), p = periodPay(f, add(f,13), true);
+  return { amount: Math.max(step(k).min, p.taxable*26), from: "fortnight" };
+}
+function runIfWorked(k){
+  let n = 1;
+  for(let d = add(k,-1); isWorkDay(S.shifts[d]); d = add(d,-1)) n++;
+  for(let d = add(k,1); isWorkDay(S.shifts[d]); d = add(d,1)) n++;
+  return n;
+}
+function worthIt(k, d){
+  const f = fortnightStart(k), to = add(f,13), saved = S.shifts;
+  const base = {...saved};
+  for(let x = f; x <= to; x = add(x,1)){ const sh = base[x]; if(sh && "DEN".includes(sh.type) && sh.status !== "worked") base[x] = {...sh, status:"worked"}; }
+  delete base[k];
+  try {
+    S.shifts = base; const p0 = periodPay(f, to, false);
+    S.shifts = {...base, [k]: {...d, status:"worked"}}; const p1 = periodPay(f, to, false);
+    const gross = p1.paid - p0.paid, tax = p1.tax - p0.tax;
+    const ann = annualEstimate(k);
+    return { f, to, p0, p1, gross, tax, ann, marg: margRate(ann.amount, fyEnd(k)) };
+  } finally { S.shifts = saved; }
+}
+function fortnightStart(dateKey){
+  const a = S.settings.anchor || "2026-11-02";
+  const n = Math.floor(diffDays(a, dateKey)/14);
+  return add(a, n*14);
+}
+/* Scratching (EBA 18.3, 18.1.3): up to 27 scratched shifts per 28-day period (two pay fortnights,
+   Monday day shift to Sunday night shift). More than 27 and the VSE minimum salary doesn't apply. */
+const SCR_LIMIT = 27;
+function defaultScr(k){ const p = panelFor(k); return "DEN".includes(p) && p ? p : "D"; }
+function scrPeriodStart(k){ const a = S.settings.scrAnchor || S.settings.anchor || "2026-10-26"; return add(a, Math.floor(diffDays(a,k)/28)*28); }
+function scrCount(start){ let n = 0; for(let i=0;i<28;i++){ const sh = S.shifts[add(start,i)]; if(sh && sh.type==="X") n += (sh.scr||"D").length; } return n; }
+function annualDayPay(k){ return step(k).min / 52 / 5 * 1.275; }
+function sickDayPay(k){ return Number(S.settings.leavePay) || 388.51; } // 7h × $55.50, as on your payslips
+function periodPay(from, to, includePlanned){ // inclusive range of days
+  const rows = []; let gross=0, meals=0, leave=0, sick=0, annual=0, planned=0, plannedGross=0, plannedMeals=0;
+  for(let k=from; k<=to; k=add(k,1)){
+    const sh = S.shifts[k];
+    const c = calcShift(k, sh);
+    if(c){
+      if(sh.status==="worked"){ rows.push({k,sh,c}); gross += c.gross; meals += c.meal; }
+      else { planned++; plannedGross += c.gross; plannedMeals += c.meal; if(includePlanned) rows.push({k,sh,c}); }
+    }
+    if(sh && sh.type==="S" && !(S.hols[k] && S.settings.phUnworked)){ // personal/carer's leave: 1/5 of the weekly VSE Ops minimum salary (23.4.2); on a public holiday the holiday pay applies instead
+      const amt = sickDayPay(k); rows.push({k, sickPay:true, sh, c:{gross:amt}}); sick += amt;
+    }
+    if(sh && sh.type==="A" && !sh.nopay && !(S.hols[k] && S.settings.phUnworked)){ // annual leave: 1/5 of weekly VSE minimum + 27.5% loading (22.5.2)
+      const amt = annualDayPay(k); rows.push({k, annPay:true, sh, c:{gross:amt}}); annual += amt;
+    }
+    if(sh && sh.type==="L" && sh.paid !== false){ // VSE self-funded leave day (7h at $55.50 on payslips)
+      const amt = Number(S.settings.leavePay)||0;
+      if(amt){ rows.push({k, leavePay:true, sh, c:{gross:amt}}); leave += amt; }
+    }
+    // unworked public holiday / CPD payment (VSE): 8h x Grade 2
+    const hol = S.hols[k];
+    if(hol && S.settings.phUnworked && k <= todayKey()){
+      const workedThatDay = [add(k,-1), k, add(k,1)].some(dk => { const s2=S.shifts[dk]; if(!s2||s2.status!=="worked"||!"DEN".includes(s2.type)) return false; return holDay(s2.type, startDate(dk,s2.type))===k; });
+      if(!workedThatDay){ const amt = r2(SHIFT_HOURS*hrx(step(k),2)); rows.push({k, holPay:true, hol, c:{gross:amt}}); gross += amt; }
+    }
+  }
+  return finishPeriod(from, to, {rows, gross, meals, leave, sick, annual, planned, plannedGross, plannedMeals});
+}
+// Turn shift earnings into a payslip: minimum salary, bonus, VSE leave, tax (meal allowance is tax-free,
+// VSE PAID comes out before tax), super (12% of gross except VSE leave pay).
+function finishPeriod(from, to, p){
+  const overScr = scrCount(scrPeriodStart(from)) > SCR_LIMIT;
+  const minF = overScr ? 0 : step(from).min/26;
+  const slip = (S.payslips||{})[from];          // real bonus / VSE PAID from your payslip when you've added it
+  const bonus = slip ? Number(slip.bonus)||0 : Number(S.settings.bonus)||0;
+  const vsePaid = slip ? Number(slip.vsePaid)||0 : Number(S.settings.vsePaid)||0;
+  const earned = p.gross + p.leave + (p.sick||0) + (p.annual||0); // leave counts toward the minimum (28 Sep–11 Oct payslip)
+  const paid = Math.max(earned, minF) + bonus;
+  const taxable = Math.max(0, paid - p.meals - vsePaid);
+  const tax = Math.round(annualTax(taxable*26, fyEnd(to))/26);
+  const superAmt = (paid - p.leave) * SUPER_RATE;
+  return { ...p, overScr, minF, bonus, vsePaid, topUp: Math.max(0, minF-earned), paid, taxable, tax, net: paid - tax - vsePaid, superAmt };
+}
+
+/* ============ STORAGE: account (db) with phone fallback ============ */
+const LS_KEY = "pbt-shifts-v1";
+let db = null, uid = null, docRef = null, mode = "local", saveTimer = null, writing = false, dirty = false;
+function lsLoad(){ try { const t = localStorage.getItem(LS_KEY); return t ? JSON.parse(t) : null; } catch(e){ return null; } }
+function lsSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch(e){} }
+function merge(obj){
+  const b = blankState();
+  const st = { ...b, ...obj, settings:{...b.settings, v:1, ...(obj.settings||{})}, hols: obj.hols || b.hols, shifts: obj.shifts || {} };
+  return migrate(st);
+}
+function setSync(text, cls){ const el = document.getElementById("sync"); el.textContent = text; el.className = "pill " + (cls||""); }
+/* Six-in-a-row rule (EBA Part B 1.11.1): no more than six consecutive shifts, sick days included.
+   After a run of six, the next day is set to Off automatically. Leave and Off days break a run. */
+let ruleMsg = "";
+function isWorkDay(sh){ return !!sh && "DENIS".includes(sh.type); }
+function enforceSixDay(protect){
+  const keep = new Set(protect || []);
+  for(const k in S.shifts){ if(S.shifts[k].auto === "six" && !keep.has(k)) delete S.shifts[k]; }
+  const keys = Object.keys(S.shifts).filter(k => isWorkDay(S.shifts[k])).sort();
+  const added = [], blocked = [];
+  if(!keys.length) return {added, blocked};
+  let run = 0;
+  for(let k = keys[0], last = add(keys[keys.length-1], 1); k <= last; k = add(k,1)){
+    const sh = S.shifts[k];
+    if(!isWorkDay(sh)){ run = 0; continue; }
+    run++;
+    if(run === 6){
+      const nx = add(k,1), ex = S.shifts[nx];
+      if(!ex || (!isWorkDay(ex))){ if(!ex){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"Must be off: 6 in a row" }; added.push(nx); } }
+      else if(ex.status !== "worked" && !keep.has(nx)){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"Must be off: 6 in a row" }; added.push(nx); }
+      else blocked.push(nx);
+      run = 0; if(S.shifts[nx] && S.shifts[nx].auto === "six") k = nx;
+    }
+  }
+  return {added, blocked};
+}
+function persist(protect){
+  const r = enforceSixDay(protect);
+  const fresh = r.added.filter(k => k >= add(todayKey(), -14));
+  if(fresh.length) ruleMsg = `${fresh.map(nice).join(", ")} set to Off (6 in a row)`;
+  else if(r.blocked.some(k => k >= add(todayKey(), -14))) ruleMsg = `Heads up: ${r.blocked.filter(k => k >= add(todayKey(), -14)).map(nice).join(", ")} would be a 7th shift in a row`;
+  if(ruleMsg) setTimeout(() => { if(ruleMsg) toast(""); }, 60);
+  S.updatedAt = Date.now(); lsSave();
+  if(mode !== "db"){ setSync("Saved on this phone", "local"); return; }
+  dirty = true; setSync("Saving…");
+  clearTimeout(saveTimer); saveTimer = setTimeout(flush, 700);
+}
+async function flush(){
+  if(writing || !dirty || !docRef) return;
+  writing = true; dirty = false;
+  try { await docRef.set({ json: JSON.stringify(S), updatedAt: S.updatedAt }); setSync("Saved to your account", "ok"); }
+  catch(e){
+    if(e && e.code === "unavailable"){ dirty = true; setTimeout(flush, 1500 + Math.random()*1000); }
+    else { mode = "local"; setSync("Saved on this phone", "local"); renderStoreNote(); }
+  }
+  writing = false; if(dirty) flush();
+}
+async function connect(){
+  const cached = lsLoad(); if(cached) S = merge(cached);
+  renderAll();
+  setSync(cached ? "Saved on this phone" : "Saved on this phone", "local");
+  try {
+    if(!window.claude || typeof window.claude.use !== "function"){ renderStoreNote(); return; }
+    const user = await window.claude.use("user");
+    db = await window.claude.use("db");
+    if(!db || !user){ renderStoreNote(); return; }
+    uid = await user.id();
+    if(!uid){ renderStoreNote(); return; }
+    docRef = db.collection("data/users/" + uid).doc("state");
+    setSync("Syncing…");
+    const timer = setTimeout(() => setSync("Account not reachable yet", "local"), 10000);
+    const snap = await docRef.get();
+    clearTimeout(timer);
+    mode = "db";
+    if(snap.exists){
+      const remote = JSON.parse(snap.data().json || "{}");
+      if(!cached || (remote.updatedAt||0) >= (S.updatedAt||0)){ S = merge(remote); lsSave(); renderAll(); }
+      else { dirty = true; flush(); }
+      setSync("Saved to your account", "ok");
+    } else if(cached){ dirty = true; flush(); }
+    else setSync("Saved to your account", "ok");
+  } catch(e){ mode = "local"; setSync("Saved on this phone", "local"); }
+  renderStoreNote();
+}
+function renderStoreNote(){
+  document.getElementById("storeNote").textContent = mode==="db"
+    ? "Your shifts are saved to your Claude account, so they show up on your phone and laptop. Only you can see them."
+    : "Your shifts are saved in this browser only. Copy a backup now and then so you don't lose them.";
+}
+
+/* ============ UI STATE ============ */
+let curMonth = todayKey().slice(0,7);
+let curF = null;
+let curYear = fyEnd(todayKey());
+let sheetDay = null, draft = null;
+const $ = id => document.getElementById(id);
+function toast(t){ const el=$("toast"); const msg=[t, ruleMsg].filter(Boolean).join(" · "); const long=!!ruleMsg; ruleMsg=""; if(!msg) return; el.textContent=msg; el.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("on"), long?4500:1800); }
+
+function chipHTML(sh){
+  if(!sh) return "";
+  const plan = sh.status!=="worked" && sh.type!=="O" ? " plan" : "";
+  const letter = sh.type==="O" ? (sh.auto==="six" ? "off" : "–") : LETTER(sh.type);
+  return `<div class="chip ${sh.type}${plan}">${letter}</div>`;
+}
+
+/* ---------- Summary (header) ---------- */
+function renderScrBar(){
+  const st = scrPeriodStart(todayKey()), n = scrCount(st);
+  const cls = n > SCR_LIMIT ? "over" : n >= 22 ? "warn" : "";
+  $("scrBar").innerHTML = `Scratches: <b class="${cls}">${n} of ${SCR_LIMIT}</b>` + (n > SCR_LIMIT ? " · over the limit: no minimum salary this period" : ` · ${SCR_LIMIT-n} left`) + ` · resets ${nice(add(st,28))}`
+    + ((s6 => s6 ? `<br>${s6}` : "")(sixLine()));
+}
+// Six in a row, at a glance: how long your current run is, and the next forced day off coming up.
+function sixLine(){
+  const today = todayKey();
+  let run = 0; for(let k = today; isWorkDay(S.shifts[k]); k = add(k,-1)) run++;
+  if(!run){ for(let k = add(today,-1); isWorkDay(S.shifts[k]); k = add(k,-1)) run++; }
+  let forced = ""; for(let i = 0; i <= 14 && !forced; i++){ const k = add(today,i), sh = S.shifts[k]; if(sh && sh.auto === "six") forced = k; }
+  let blocked = ""; for(let i = 0; i <= 14 && !blocked; i++){ const k = add(today,i); let pos = 0; for(let d = k; isWorkDay(S.shifts[d]); d = add(d,-1)) pos++; if(pos > 6) blocked = k; }
+  const parts = [];
+  if(run >= 4) parts.push(`<b class="${run >= 6 ? "over" : run === 5 ? "warn" : ""}">${run} in a row</b>` + (run >= 6 ? " · next day must be off" : ` · ${6-run} more allowed`));
+  if(blocked) parts.push(`<b class="over">${nice(blocked)} would be a 7th in a row</b>`);
+  else if(forced) parts.push(`must be off ${nice(forced)}`);
+  return parts.length ? "Six-in-a-row: " + parts.join(" · ") : "";
+}
+function renderSummary(){
+  renderScrBar();
+  const f = fortnightStart(todayKey());
+  const p = periodPay(f, add(f,13), false);
+  const shiftsWorked = p.rows.filter(r=>!r.holPay && !r.leavePay && !r.sickPay && !r.annPay).length;
+  $("summary").innerHTML = `
+    <div class="big"><div class="k">Take-home est.</div><div class="v num">${money(p.net)}</div></div>
+    <div><div class="k">Gross</div><div class="v num">${money(p.paid)}</div></div>
+    <div><div class="k">Tax est.</div><div class="v num">${money(p.tax)}</div></div>`;
+  $("summarySub").textContent = `This pay: ${nice(f)} – ${nice(add(f,13))} · ${shiftsWorked} worked, ${p.planned} planned` + (p.topUp>0 ? ` · on minimum salary` : "");
+}
+
+/* ---------- Month ---------- */
+function cellHTML(k, today){
+  const inMonth = k.slice(0,7) === curMonth;
+  const sh = S.shifts[k], hol = S.hols[k], pn = panelFor(k), sc = schoolHol(k);
+  return `<button class="cell${inMonth?"":" out"}${k===today?" today":""}${pn?" pw-"+pn:""}${sc?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sc?", school holidays":""}${pn?", panel "+NAMES[pn]:""}${sh?", "+NAMES[sh.type]+(sh.status==="worked"?" worked":" planned"):""}${hol?", "+hol:""}">
+      <span class="d">${D(k).getUTCDate()}</span>${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:""}${hol?`<span class="hol">${hol}</span>`:""}
+      ${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}
+      ${chipHTML(sh) || '<div class="chip" style="visibility:hidden">·</div>'}
+    </button>`;
+}
+// Month view grouped by pay fortnight: each fortnight gets a coloured frame and its pay date.
+function renderMonth(){
+  const [y,m] = curMonth.split("-").map(Number);
+  $("mTitle").textContent = MONTHS[m-1] + " " + y;
+  const first = curMonth + "-01", lastDay = add(K(new Date(Date.UTC(y, m, 1))), -1);
+  const today = todayKey(), curPay = fortnightStart(today);
+  const weeks = []; for(let w = monday(first); w <= lastDay; w = add(w,7)) weeks.push(w);
+  const groups = [];
+  for(const w of weeks){ const f = fortnightStart(w); const g = groups[groups.length-1]; if(g && g.f === f) g.weeks.push(w); else groups.push({f, weeks:[w]}); }
+  let html = "";
+  for(const g of groups){
+    const ab = (((Math.floor(diffDays(S.settings.anchor || "2026-10-26", g.f)/14)) % 2) + 2) % 2 ? "pfB" : "pfA";
+    const isCur = g.f === curPay, payDay = add(g.f, 17);
+    const p = periodPay(g.f, add(g.f,13), false);
+    html += `<div class="pf ${ab}${isCur?" cur":""}">
+      <div class="pfl"><span>${isCur?"<b>This pay</b> · ":""}${nice(g.f)} – ${nice(add(g.f,13))}</span><span class="num">${p.gross>0?money(p.paid)+" · ":""}paid ${DOWS[dow(payDay)]} ${D(payDay).getUTCDate()} ${MON[D(payDay).getUTCMonth()]}</span></div>
+      <div class="grid">${g.weeks.map(w => [0,1,2,3,4,5,6].map(i => cellHTML(add(w,i), today)).join("")).join("")}</div>
+    </div>`;
+  }
+  $("mGrid").innerHTML = html;
+}
+function renderWeek(){
+  const mon = monday(todayKey());
+  let html = "";
+  for(let i=0;i<7;i++){
+    const k = add(mon,i), sh = S.shifts[k], c = calcShift(k, sh), hol = S.hols[k];
+    const tag = sh ? `<div class="tag chip ${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}">${sh.type==="O"?"–":LETTER(sh.type)}</div>` : `<div class="tag chip O">·</div>`;
+    const pn = panelFor(k);
+    const scH = schoolHol(k);
+    const sub = (sh && sh.job && JOB(sh.job) ? JOB(sh.job).name + " · " : "") + (sh ? (TIMES[sh.type] ? timesFor(k, sh.type) : sh.type==="X" ? "Scratched: " + (sh.scr||"D").split("").map(c=>NAMES[c].toLowerCase()).join(", ") : NAMES[sh.type]) + (sh.ext?` · +${sh.ext}h`:"") : "Nothing entered") + (pn ? ` · panel ${NAMES[pn].toLowerCase()}` : "") + (scH ? " · school hols" : "");
+    html += `<button class="li" data-k="${k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%">
+      ${tag}<div><div class="t">${nice(k)}${hol?` <span class="status" style="color:var(--ph);border-color:var(--ph)">${hol}</span>`:""}</div><div class="s">${esc(sub)}${sh&&sh.note?" · "+esc(sh.note):""}</div></div>
+      <div class="amt num">${c?money(c.gross):""}${sh&&"DEN".includes(sh.type)?`<div><span class="status${sh.status==="worked"?" w":""}">${sh.status==="worked"?"Worked":"Planned"}</span></div>`:""}</div>
+    </button>`;
+  }
+  $("weekList").innerHTML = html;
+}
+function holNote(k, type){
+  if(type !== "N") return "";
+  const st = startDate(k, "N"), h = holDay("N", st);
+  if(h) return ` · counts as ${S.hols[h]==="CPD"?"closed port day":"public holiday"} ${nice(h)}`;
+  if(S.hols[st] === "PH") return " · normal night: it belongs to the next day";
+  if(S.hols[add(st,1)] === "CPD") return " · normal night: closed port shifts start the next morning";
+  return "";
+}
+function timesFor(k, type){
+  if(type==="N"){ const st = startDate(k,"N"); return `${DOWS[dow(st)]} 10pm – ${DOWS[dow(add(st,1))]} 6am`; }
+  return TIMES[type] || "";
+}
+
+/* ---------- Pay ---------- */
+function checkHTML(slip){
+  const c = slip.check;
+  if(!c) return `<div class="small muted" style="margin-top:8px">Add this payslip PDF again to run the payslip check.</div>`;
+  if(!c.issues.length) return `<div class="note" style="margin-top:10px;background:rgba(46,139,87,.1);border-color:rgba(46,139,87,.4)"><b>Payslip check:</b> all ${c.checked} shift${c.checked===1?"":"s"} paid correctly under the EBA, with allowances, meal allowance and leave hours all present.</div>`;
+  return `<div class="note" style="margin-top:10px;border-color:var(--ph);background:rgba(210,60,60,.07)"><b>Payslip check: ${c.issues.length} thing${c.issues.length>1?"s":""} to look at</b>${c.short>0?` · possibly <b>${money(c.short,2)}</b> short`:""}
+    <ul style="margin:6px 0 0;padding-left:18px">${c.issues.map(i => `<li style="margin:4px 0">${nice(i.k)}: ${esc(i.msg)}${i.amt>0?` <b class="num">(${money(i.amt,2)})</b>`:""}</li>`).join("")}</ul>
+    <div class="small muted" style="margin-top:6px">Checked ${c.checked} shift${c.checked===1?"":"s"}. If something looks wrong, raise it with payroll and quote the date.</div></div>`;
+}
+// Days in a fortnight with nothing on them: tag them so scratches and left-off days are counted.
+function gapDays(from, to){
+  const out = [], today = todayKey();
+  for(let k=from; k<=to && k<today; k=add(k,1)){
+    if(S.shifts[k]) continue;
+    out.push(k);
+  }
+  return out;
+}
+function renderGaps(from, to){
+  const box = $("gapBox"), gaps = gapDays(from, to);
+  if(!gaps.length){ box.innerHTML = ""; box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<div class="lbl">Days with nothing on them</div>
+    <div class="small muted" style="margin:4px 0 6px">Were you scratched, left off, or was it a normal day off? Tag them so your scratch count and left-off days stay right.</div>
+    <div class="list">${gaps.map(k => { const pn = panelFor(k); return `<div class="li" style="grid-template-columns:1fr auto">
+      <div><div class="t">${nice(k)}</div><div class="s">${pn ? `Panel: ${NAMES[pn].toLowerCase()} week` : ""}${schoolHol(k) ? " · school hols" : ""}</div></div>
+      <div class="btns" style="flex-wrap:nowrap;gap:4px">
+        <button class="btn" style="min-height:38px;padding:0 9px;font-size:13px" data-gap="${k}" data-as="X">Scratched</button>
+        <button class="btn" style="min-height:38px;padding:0 9px;font-size:13px" data-gap="${k}" data-as="U">Left off</button>
+        <button class="btn" style="min-height:38px;padding:0 9px;font-size:13px" data-gap="${k}" data-as="O">Day off</button>
+      </div></div>`; }).join("")}</div>`;
+}
+function renderPay(){
+  if(!curF) curF = fortnightStart(todayKey());
+  const to = add(curF,13);
+  $("fTitle").textContent = `${nice(curF)} – ${nice(to)}`;
+  const p = periodPay(curF, to, false);
+  const pp = periodPay(curF, to, true);
+  $("payKpis").innerHTML = `
+    <div class="card kpi hl"><div class="k">Take-home (est.)</div><div class="v num">${money(p.net,2)}</div></div>
+    <div class="card kpi"><div class="k">Gross</div><div class="v num">${money(p.paid,2)}</div></div>
+    <div class="card kpi"><div class="k">Tax (est.)</div><div class="v num">${money(p.tax,2)}</div></div>
+    <div class="card kpi"><div class="k">Super (12%)</div><div class="v num">${money(p.superAmt,2)}</div></div>
+    <div class="card kpi"><div class="k">Shifts + allowances</div><div class="v num">${money(p.gross,2)}</div></div>
+    <div class="card kpi"><div class="k">Bonus · RDOs · sick</div><div class="v num">${money(p.bonus,0)} · ${money(p.leave,0)} · ${money(p.sick||0,0)}</div></div>`;
+  const slip = (S.payslips||{})[curF];
+  let note = slip ? `<div class="card" style="margin-bottom:10px"><div class="lbl">Your payslip${slip.payDate?` (paid ${nice(slip.payDate)})`:""}</div>
+    <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Payslip</th><th class="r">App</th></tr>
+    <tr><td>Gross</td><td class="r">${money(slip.gross,2)}</td><td class="r">${money(p.paid,2)}</td></tr>
+    <tr><td>Tax</td><td class="r">${money(slip.tax,2)}</td><td class="r">${money(p.tax,2)}</td></tr>
+    <tr><td>Super</td><td class="r">${slip.super!=null?money(slip.super,2):"–"}</td><td class="r">${money(p.superAmt,2)}</td></tr>
+    ${slip.bank!==undefined ? `<tr><td>Take-home${slip.bank?" (incl. Bank 2)":""}</td><td class="r">${money(slip.net + (slip.bank||0),2)}</td><td class="r">${money(p.net - (slip.otherDed||0),2)}</td></tr>` : `<tr><td>Net (after all deductions)</td><td class="r">${money(slip.net,2)}</td><td class="r">–</td></tr>`}</table>
+    ${slip.bank ? `<div class="small muted" style="margin-top:4px">Your payslip's NET leaves out the ${money(slip.bank,2)} that goes to your second account (BANK 2), so it's added back here.${slip.otherDed?` Other deductions (${money(slip.otherDed,2)}) are taken off the app figure.`:""}</div>` : ""}
+    ${Math.abs(slip.gross - p.paid) > 2 ? `<div class="small" style="margin-top:6px;color:var(--warn)">Gross is ${money(Math.abs(slip.gross-p.paid),2)} ${slip.gross>p.paid?"higher":"lower"} on the payslip. Check the shifts below.</div>` : `<div class="small muted" style="margin-top:6px">The app matches your payslip.</div>`}
+    ${checkHTML(slip)}</div>` : "";
+  const upg = upgradeStats(curF, to);
+  if(upg.shifts) note += `<div class="small num" style="margin-bottom:6px"><b>Upgrades this pay:</b> ${upg.shifts} shift${upg.shifts>1?"s":""}, ${upg.hours} h above Grade ${upg.base}, worth <b>${money(upg.extra,2)}</b> extra.</div>`;
+  note += `<div class="small muted num">Take-home = gross − tax − VSE PAID (${money(p.vsePaid,2)}). Meal allowance (${money(p.meals,2)}) isn't taxed. ${slip ? "Bonus and VSE PAID are from your payslip." : "Bonus is an estimate you can change in Setup."}</div>`;
+  if(p.overScr) note += `<div class="note" style="margin-top:8px">More than 27 scratches in the 28-day period, so the VSE minimum salary doesn't apply to this pay (EBA 18.1.3).</div>`;
+  if(p.topUp>0) note += `<div class="note" style="margin-top:8px">You're under the VSE minimum (${money(p.minF,2)}) by <b class="num">${money(p.topUp,2)}</b>. You'll still be paid the minimum, and that gap comes back out of later pays that go over it.</div>`;
+  if(p.planned>0){
+    const proj = finishPeriod(curF, to, {...p, gross: p.gross + p.plannedGross, meals: p.meals + p.plannedMeals});
+    note += `<div class="note" style="margin-top:8px">${p.planned} planned shift${p.planned>1?"s":""} not counted yet. If ${p.planned>1?"they all go":"it goes"} ahead, gross would be about <b class="num">${money(proj.paid,2)}</b> and take-home about <b class="num">${money(proj.net,2)}</b>. Irregular days aren't included until you set the shift. Mark shifts as worked to count them.</div>`;
+  }
+  $("payNote").innerHTML = note;
+  renderGaps(curF, to);
+
+  // weeks
+  let wt = `<tr><th>Week</th><th class="r">Shifts</th><th class="r">Hours</th><th class="r">Earned</th></tr>`;
+  let totS=0,totH=0,totG=0;
+  for(let w=0; w<2; w++){
+    const a = add(curF,w*7), b = add(a,6); let s=0,h=0,g=0;
+    for(let k=a;k<=b;k=add(k,1)){ const sh=S.shifts[k]; const c=calcShift(k,sh); if(c && sh.status==="worked"){ s++; h+=SHIFT_HOURS+c.exH; g+=c.gross; } }
+    p.rows.filter(r=>(r.holPay||r.leavePay||r.sickPay||r.annPay) && r.k>=a && r.k<=b).forEach(r=>{ g+=r.c.gross; });
+    totS+=s; totH+=h; totG+=g;
+    wt += `<tr><td>${nice(a)}</td><td class="r">${s}</td><td class="r">${h}</td><td class="r">${money(g,2)}</td></tr>`;
+  }
+  wt += `<tr class="total"><td>Fortnight</td><td class="r">${totS}</td><td class="r">${totH}</td><td class="r">${money(totG,2)}</td></tr>`;
+  $("weekTable").innerHTML = wt;
+
+  // shifts
+  const rows = pp.rows;
+  $("payList").innerHTML = rows.length ? rows.map(r => {
+    if(r.holPay) return `<div class="li"><div class="tag chip O" style="color:var(--ph);border-color:var(--ph)">${r.hol}</div><div><div class="t">${nice(r.k)}</div><div class="s">${r.hol==="CPD"?"Closed port day":"Public holiday"} not worked · 8h × Grade 2</div></div><div class="amt num">${money(r.c.gross,2)}</div></div>`;
+    if(r.annPay) return `<button class="li" data-k="${r.k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%"><div class="tag chip A">AL</div><div><div class="t">${nice(r.k)} · Annual leave</div><div class="s">1/5 of weekly VSE minimum + 27.5% loading</div></div><div class="amt num">${money(r.c.gross,2)}</div></button>`;
+    if(r.sickPay) return `<button class="li" data-k="${r.k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%"><div class="tag chip S">S</div><div><div class="t">${nice(r.k)} · Sick</div><div class="s">Personal leave · 7h × $55.50</div></div><div class="amt num">${money(r.c.gross,2)}</div></button>`;
+    if(r.leavePay) return `<div class="li"><div class="tag chip L">R</div><div><div class="t">${nice(r.k)} · RDO</div><div class="s">Self-funded RDO (VSE LVE PD, 7h)</div></div><div class="amt num">${money(r.c.gross,2)}</div></div>`;
+    const c = r.c, sh = r.sh, w = sh.status==="worked";
+    const parts = [c.splitH ? `${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade} × ${c.m}` : `8h × ${money(c.rate,2)} × ${c.m}`];
+    if(c.exH) parts.push(`+${c.exH}h × ${c.om}${c.exGrade!==c.grade?` (G${c.exGrade})`:""}`);
+    parts.push(`allowance ${money(c.ca,2)}`);
+    if(c.meal) parts.push(`meal ${money(c.meal,2)}`);
+    return `<button class="li" data-k="${r.k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%">
+      <div class="tag chip ${sh.type}${w?"":" plan"}">${sh.type}</div>
+      <div><div class="t">${nice(r.k)} · ${NAMES[sh.type]} · ${sh.job && JOB(sh.job) ? JOB(sh.job).name : "G"+c.grade}${c.hol?` · ${c.hol}`:""}</div><div class="s num">${parts.join(" · ")}</div></div>
+      <div class="amt num">${money(c.gross,2)}<div><span class="status${w?" w":""}">${w?"Worked":"Planned"}</span></div></div></button>`;
+  }).join("") : `<div class="empty">No shifts in this fortnight yet. Tap a day on the calendar to add one.</div>`;
+
+  // FY
+  const fyE = fyEnd(to), fyStart = (fyE-1)+"-07-01";
+  let fG=0,fP=0,fT=0,fS=0,n=0;
+  let k = fortnightStart(fyStart); if(k < fyStart) k = add(k,14);
+  const firstEntry = Object.keys(S.shifts).filter(x=>x>=fyStart && S.shifts[x].status==="worked").sort()[0];
+  if(firstEntry && fortnightStart(firstEntry) > k) k = fortnightStart(firstEntry); // count from when you started logging
+  const lastF = fortnightStart(todayKey());
+  for(; k<=lastF; k=add(k,14)){ const q = periodPay(k, add(k,13), false); fG+=q.gross; fP+=q.paid; fT+=q.tax; fS+=q.superAmt; n++; }
+  $("fyTable").innerHTML = `
+    <tr><th>FY ${fyE-1}–${String(fyE).slice(2)}, pays you've logged</th><th class="r">${n} pay${n===1?"":"s"}</th></tr>
+    <tr><td>Earned from shifts</td><td class="r">${money(fG,2)}</td></tr>
+    <tr><td>Paid (with minimum salary)</td><td class="r">${money(fP,2)}</td></tr>
+    <tr><td>Tax (est.)</td><td class="r">${money(fT,2)}</td></tr>
+    <tr><td>Super (est.)</td><td class="r">${money(fS,2)}</td></tr>
+    <tr class="total"><td>Ahead of / behind minimum</td><td class="r">${money(fG - n*step(lastF).min/26,2)}</td></tr>`;
+}
+
+/* ---------- Year ---------- */
+// Year page: financial year (Jul–Jun) by default, or calendar year.
+function yearMonths(){
+  if(S.settings.yearMode === "cal") return [...Array(12)].map((_,i) => [curYear, i+1]);
+  return [...Array(12)].map((_,i) => i < 6 ? [curYear-1, i+7] : [curYear, i-5]);   // curYear = year the FY ends
+}
+function yearLabel(){ return S.settings.yearMode === "cal" ? String(curYear) : `FY ${curYear-1}–${String(curYear).slice(2)}`; }
+function fyMoney(fyE){
+  // Pays count in the financial year they're paid in (Thursday after the fortnight ends).
+  const start = (fyE-1) + "-07-01", end = fyE + "-06-30", today = todayKey();
+  let f = fortnightStart(add(start,-17)); const t = {gross:0, tax:0, sup:0, n:0, slips:0};
+  for(; add(f,17) <= end; f = add(f,14)){
+    const payDay = add(f,17); if(payDay < start || f > today) continue;
+    const sl = (S.payslips||{})[f];
+    if(sl){ t.gross += sl.gross||0; t.tax += sl.tax||0; t.sup += sl.super||0; t.n++; t.slips++; continue; }
+    let logged = false; for(let x = f; x <= add(f,13) && !logged; x = add(x,1)){ const s2 = S.shifts[x]; logged = !!s2 && "DEN".includes(s2.type) && s2.status === "worked"; }
+    if(!logged) continue;                       // nothing entered for that fortnight
+    const q = periodPay(f, add(f,13), false);
+    t.gross += q.paid; t.tax += q.tax; t.sup += q.superAmt; t.n++;
+  }
+  return t;
+}
+// 30 June forecast: every pay in the financial year (by pay date). Payslips where you have them, app
+// estimates for finished fortnights you logged, and your recent average for the rest (pays still to come,
+// and any before you started logging). Tax-time figure = tax taken out vs tax due on the year's taxable pay.
+function fyForecast(fyE){
+  const start = (fyE-1) + "-07-01", end = fyE + "-06-30", today = todayKey();
+  const pays = [];
+  for(let f = fortnightStart(add(start,-17)); add(f,17) <= end; f = add(f,14)){
+    if(add(f,17) < start) continue;
+    const sl = (S.payslips||{})[f], done = add(f,13) < today;
+    if(sl && sl.gross){ pays.push({f, kind:"slip", gross:sl.gross, tax:sl.tax||0, taxable: Math.max(0,(sl.gross||0)-(sl.meal||0)-(sl.vsePaid||0)), sup: sl.super||0}); continue; }
+    let logged = false; for(let x = f; x <= add(f,13) && !logged; x = add(x,1)){ const s2 = S.shifts[x]; logged = !!s2 && s2.status === "worked" && "DENSLA".includes(s2.type); }
+    if(done && logged){ const q = periodPay(f, add(f,13), false); pays.push({f, kind:"app", gross:q.paid, tax:q.tax, taxable:q.taxable, sup:q.superAmt}); continue; }
+    pays.push({f, kind: done ? "missing" : "future"});
+  }
+  const known = pays.filter(p => p.kind === "slip" || p.kind === "app");
+  if(!known.length) return null;
+  const recent = known.slice(-6), avg = key => recent.reduce((a,p) => a + p[key], 0) / recent.length;
+  const A = {gross:avg("gross"), tax:avg("tax"), taxable:avg("taxable"), sup:avg("sup")};
+  const t = {gross:0, tax:0, taxable:0, sup:0};
+  for(const p of pays) for(const key in t) t[key] += (p.kind === "slip" || p.kind === "app") ? p[key] : A[key];
+  const due = annualTax(t.taxable, fyE);
+  return { ...t, due, back: t.tax - due, avg: A, n: pays.length, known: known.length, recent: recent.length,
+    future: pays.filter(p => p.kind === "future").length, missing: pays.filter(p => p.kind === "missing").length };
+}
+function forecastHTML(fyE){
+  if(fyE < fyEnd(todayKey())) return "";
+  const fc = fyForecast(fyE); if(!fc) return "";
+  const back = fc.back, label = Math.abs(back) < 50 ? "About even at tax time" : back > 0 ? "Tax back (rough guide)" : "Tax to pay (rough guide)";
+  return `<div class="lbl" style="margin-top:14px">By 30 June ${fyE} (estimate)</div>
+    <table class="num" style="margin-top:6px"><tr><td>Gross for the year</td><td class="r">${money(fc.gross,0)}</td></tr>
+    <tr><td>Tax taken out</td><td class="r">${money(fc.tax,0)}</td></tr>
+    <tr><td>Super</td><td class="r">${money(fc.sup,0)}</td></tr>
+    <tr class="total"><td>${label}</td><td class="r" style="color:${back >= 50 ? "var(--good)" : back <= -50 ? "var(--ph)" : "inherit"}">${Math.abs(back) < 50 ? "–" : money(Math.abs(back),0)}</td></tr></table>
+    <div class="small muted" style="margin-top:6px">Of the year's ${fc.n} pays, ${fc.known} ${fc.known === 1 ? "is" : "are"} from your payslips or logged shifts. The other ${fc.n - fc.known} ${fc.future ? `(${fc.future} still to come${fc.missing ? `, ${fc.missing} not logged` : ""}) ` : ""}use your average of the last ${fc.recent} pay${fc.recent>1?"s":""}: about ${money(fc.avg.gross,0)} gross each. The tax figure only covers your DP World pay. It leaves out the rental property, other income and work deductions, so treat it as a rough guide.</div>`;
+}
+// Start page: predicted wages to 30 June, and a big alarm when the year's taxable pay gets near $190,000,
+// where every extra dollar is taxed at 47c (45% + 2% Medicare).
+const TOP_LINE = 190000, TOP_WARN = 20000;   // warn once within $20k of the line
+function avgShiftGross(){
+  let n = 0, g = 0; const today = todayKey();
+  for(let k = add(today,-56); k <= today; k = add(k,1)){ const sh = S.shifts[k]; const c = sh && sh.status === "worked" ? calcShift(k, sh) : null; if(c){ n++; g += c.gross - c.meal; } }
+  return n ? g / n : 0;
+}
+function renderEofy(){
+  const fyE = fyEnd(todayKey()), fc = fyForecast(fyE), card = $("eofyCard"), al = $("taxAlarm");
+  if(!fc){
+    card.innerHTML = `<div class="lbl">Predicted wages to 30 June ${fyE}</div><div class="small muted" style="margin-top:6px">Add a payslip or log a fortnight of shifts and your predicted wages for the year show here.</div>`;
+    al.hidden = true; return;
+  }
+  const room = TOP_LINE - fc.taxable, lvl = room <= 0 ? "over" : room <= TOP_WARN ? "warn" : "";
+  const pct = Math.min(100, fc.taxable / TOP_LINE * 100), shiftG = avgShiftGross();
+  card.className = "card eofy";
+  card.innerHTML = `<div class="lbl">Predicted wages to 30 June ${fyE}</div>
+    <div class="big num" style="margin-top:4px">${money(fc.gross,0)}</div>
+    <div class="small muted num">Tax about ${money(fc.tax,0)} · super about ${money(fc.sup,0)}</div>
+    <div class="bar" role="img" aria-label="${Math.round(pct)}% of the way to the 47% tax line"><i class="${lvl}" style="width:${pct}%"></i></div>
+    <div class="small num" style="margin-top:6px">Taxable about ${money(fc.taxable,0)} · ${room > 0 ? `<b>${money(room,0)}</b> under the 47% tax line ($190,000)` : `<b style="color:var(--ph)">${money(-room,0)} over</b> the 47% tax line`}</div>
+    <div class="small muted" style="margin-top:4px">Based on ${fc.known} pay${fc.known===1?"":"s"} so far and your recent average for the rest. Full breakdown on the Year tab.</div>`;
+  if(!lvl){ al.hidden = true; al.innerHTML = ""; return; }
+  const shifts = shiftG > 0 ? Math.floor(Math.max(0, room) / shiftG) : 0;
+  al.className = "alarm " + lvl; al.hidden = false;
+  al.innerHTML = lvl === "over"
+    ? `<div class="h">⚠ Over the 47% tax line</div>
+       <div class="v num">${money(-room,0)} over</div>
+       <div class="s">You're heading for about ${money(fc.taxable,0)} taxable this year. Every dollar over $190,000 is taxed at <b>47c</b> (45% + Medicare), so you keep only <b>53c</b> of each extra dollar. Extra shifts are worth a lot less from here.</div>`
+    : `<div class="h">⚠ Getting close to the 47% tax line</div>
+       <div class="v num">${money(room,0)} to go</div>
+       <div class="s">You're heading for about ${money(fc.taxable,0)} taxable this year. Over $190,000, every extra dollar is taxed at <b>47c</b> instead of 39c.${shifts ? ` That's room for about <b>${shifts} more shift${shifts===1?"":"s"}</b> like your recent ones on top of what's predicted.` : ""}</div>`;
+  al.innerHTML += `<div class="s" style="margin-top:8px;font-size:12px;opacity:.85">Counts your DP World pay only. Rental income or losses and work deductions move it up or down.</div>`;
+}
+// Upgrades: shifts (or part shifts) paid above your usual grade, from what you've logged as worked.
+function upgradeStats(from, to){
+  const base = Number(S.settings.grade) || 2, byJob = {}; let shifts = 0, hours = 0, extra = 0;
+  for(let k = from; k <= to; k = add(k,1)){
+    const sh = S.shifts[k]; if(!sh || sh.status !== "worked") continue;
+    const c = calcShift(k, sh); if(!c) continue;
+    const baseRate = hrx(step(c.start), base);
+    const fullH = c.grade > base ? SHIFT_HOURS - c.splitH : 0, partH = c.splitGrade > base ? c.splitH : 0;
+    if(!fullH && !partH) continue;
+    const plus = r2(fullH * (c.rate - baseRate) * c.m) + r2(partH * (c.splitRate - baseRate) * c.m);
+    const name = upgName(sh, c);
+    const top = Math.max(fullH ? c.grade : 0, partH ? c.splitGrade : 0);
+    const desc = (fullH + partH === SHIFT_HOURS ? "Whole shift" : fullH + partH === SHIFT_HOURS / 2 ? "Half shift" : `${fullH + partH} h`) + ` at Grade ${top}`;
+    const j = byJob[name] = byJob[name] || {n:0, h:0, extra:0, desc, top};
+    j.n++; j.h += fullH + partH; j.extra += plus; shifts++; hours += fullH + partH; extra += plus;
+  }
+  return { base, byJob, shifts, hours, extra };
+}
+// Name an upgrade by the job, not the grade. Payslips only show grades, so work it out:
+// whole shift Grade 4 = RTG + tug, whole shift Grade 3 = fork + fork,
+// half the shift upgraded from Grade 2 = a lash work-through (RTG if Grade 4, fork if Grade 3).
+function upgName(sh, c){
+  if(sh.job && JOB(sh.job)) return JOB(sh.job).name;
+  const g = Number(c.grade), sh4 = c.splitH || 0, sg = Number(c.splitGrade) || g;
+  if(!sh4){ if(g === 4) return "RTG + tug"; if(g === 3) return "Fork + fork"; return `Grade ${g}`; }
+  const hi = Math.max(g, sg), lo = Math.min(g, sg);
+  if(lo <= 2 && hi === 4) return "Lash + RTG work-through";
+  if(lo <= 2 && hi === 3) return "Lash + fork work-through";
+  if(lo === 3 && hi === 4) return "RTG + fork";
+  return `${sh4}h at Grade ${sg}`;
+}
+function missedUpgrades(from, to){
+  let n = 0, amt = 0;
+  for(const sl of Object.values(S.payslips||{})){
+    if(!sl.check || sl.from < from || sl.from > to) continue;
+    for(const i of sl.check.issues) if(/upgrade/i.test(i.msg)){ n++; amt += i.amt > 0 ? i.amt : 0; }
+  }
+  return { n, amt };
+}
+function renderUpgrades(){
+  const box = $("upgBox");
+  const [from, to] = S.settings.yearMode === "cal" ? [curYear+"-01-01", curYear+"-12-31"] : [(curYear-1)+"-07-01", curYear+"-06-30"];
+  const u = upgradeStats(from, to), miss = missedUpgrades(from, to);
+  const rows = Object.entries(u.byJob).sort((a,b) => b[1].top - a[1].top || b[1].n - a[1].n);
+  box.innerHTML = `<div class="lbl">Upgrades in ${yearLabel()}</div>` + (u.shifts ? `
+    <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Shifts</th><th class="r">Extra pay</th></tr>
+    ${rows.map(([name, j]) => `<tr><td>${esc(name)}<div class="small muted">${esc(j.desc)} · ${j.h} h</div></td><td class="r">${j.n}</td><td class="r">${money(j.extra,2)}</td></tr>`).join("")}
+    <tr class="total"><td>Total</td><td class="r">${u.shifts}</td><td class="r">${money(u.extra,2)}</td></tr></table>
+    <div class="small muted" style="margin-top:6px">Extra pay is what the upgrade added on top of Grade ${u.base} for the same shift, penalty rate included. Counts shifts marked as worked.</div>`
+    : `<div class="small muted" style="margin-top:6px">No upgrades logged as worked yet. Pick a job like "RTG + tug" or "Fork + fork" when you log a shift and it shows up here.</div>`)
+    + (miss.n ? `<div class="note" style="margin-top:8px;border-color:var(--ph);background:rgba(210,60,60,.07)">Payslip check flagged <b>${miss.n} possibly missed upgrade${miss.n>1?"s":""}</b>${miss.amt>0?` (about ${money(miss.amt,2)})`:""}. Details are on the Pay tab for each fortnight.</div>` : "");
+}
+// Leave balances: last payslip's figures, then 7 hours off for each sick / annual / RDO day you've logged
+// since, and the VSE bank topped up each pay by VSE PAID ÷ $55.50 an hour (matches your Sep–Oct payslips).
+function renderLeave(){
+  const box = $("leaveBal");
+  const slips = Object.values(S.payslips||{}).filter(x => x.bal && (x.bal.sicEnt !== null || x.bal.annEnt !== null)).sort((a,b) => a.to < b.to ? -1 : 1);
+  const sl = slips[slips.length-1];
+  if(!sl){ box.innerHTML = `<div class="lbl">Leave balances</div><div class="small muted" style="margin-top:6px">Add a payslip PDF to see your sick, annual leave and RDO balances. They're at the bottom of each payslip.</div>`; return; }
+  const today = todayKey(); let sick=0, ann=0, rdo=0;
+  for(const k in S.shifts){ if(k > sl.to && k <= today){ const t = S.shifts[k].type; if(t==="S") sick++; else if(t==="A" && !S.shifts[k].nopay) ann++; else if(t==="L") rdo++; } }
+  let pays = 0; for(let f = add(sl.from,14); add(f,17) <= today; f = add(f,14)) pays++;
+  const perHour = (Number(S.settings.leavePay)||388.51)/7, topUp = (Number(sl.vsePaid)||0) / perHour;
+  const b = sl.bal, H = h => `${h<0?"−":""}${Math.abs(h).toFixed(2)} h`, Dd = h => `${h<0?"−":""}${Math.abs(h/7).toFixed(1)} days`;
+  const row = (name, entNow, entSlip, acc, used, extra) => `<tr><td>${name}<div class="small muted">${used}</div></td><td class="r">${entSlip===null?"–":H(entNow)}<div class="small muted">${entSlip===null?"":Dd(entNow)}</div></td><td class="r">${acc===null||acc===undefined?"–":H(acc)}</td></tr>`;
+  box.innerHTML = `<div class="lbl">Leave balances</div>
+    <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Entitled now</th><th class="r">Accrued</th></tr>
+    ${row("Sick (personal)", (b.sicEnt||0) - sick*7, b.sicEnt, b.sicAcc, sick ? `−${sick*7} h for ${sick} sick day${sick>1?"s":""} since` : "no sick days since")}
+    ${row("Annual leave", (b.annEnt||0) - ann*7, b.annEnt, b.annAcc, ann ? `−${ann*7} h for ${ann} day${ann>1?"s":""} since` : "no annual leave since")}
+    ${row("VSE bank (RDOs)", (b.vspEnt||0) + pays*topUp - rdo*7, b.vspEnt, null, `${pays ? `+${(pays*topUp).toFixed(2)} h from ${pays} pay${pays>1?"s":""}` : "no pays"}${rdo ? `, −${rdo*7} h for ${rdo} RDO${rdo>1?"s":""}` : ""} since`)}
+    </table>
+    <div class="small muted" style="margin-top:6px">From your payslip for ${nice(sl.from)} – ${nice(sl.to)}, then 7 hours off for each sick, annual leave or RDO day logged since. Accrued is copied as shown on that payslip. Each RDO day is 7 hours, so about ${Math.floor(Math.max(0,(b.vspEnt||0) + pays*topUp - rdo*7)/7)} RDO${Math.floor(Math.max(0,(b.vspEnt||0) + pays*topUp - rdo*7)/7)===1?"":"s"} left in the VSE bank.</div>`;
+}
+function renderYear(){
+  renderLeave();
+  renderUpgrades();
+  $("yTitle").textContent = yearLabel();
+  document.querySelectorAll("#yMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === (S.settings.yearMode || "fy"))));
+  const counts = {D:[0,0],E:[0,0],N:[0,0],I:[0,0],L:[0,0],S:[0,0],A:[0,0],X:[0,0],U:[0,0]};
+  let html = "";
+  for(const [yy, m] of yearMonths()){
+    const first = `${yy}-${pad(m)}-01`;
+    let cells = "";
+    for(let b=0;b<dow(first);b++) cells += `<span class="c blank"></span>`;
+    for(let k=first; k.slice(0,7)===first.slice(0,7); k=add(k,1)){
+      const sh = S.shifts[k], hol = S.hols[k];
+      if(sh && counts[sh.type]) counts[sh.type][sh.status==="worked"?0:1]++;
+      const cls = sh ? `${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}` : "";
+      cells += `<button class="c ${cls}${hol?" ph":""}${schoolHol(k)?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sh?" "+NAMES[sh.type]:""}"></button>`;
+    }
+    html += `<div class="mini"><h4>${MON[m-1]}${m===1||(m===7&&S.settings.yearMode!=="cal")?` <span class="muted" style="font-weight:500">${yy}</span>`:""}</h4><div class="g">${cells}</div></div>`;
+  }
+  $("yearGrid").innerHTML = html;
+  $("yearCounts").innerHTML = `<tr><th>${yearLabel()}</th><th class="r">Worked</th><th class="r">Planned</th></tr>` +
+    ["D","E","N","I","L","S","A","X","U"].map(t=>`<tr><td><span class="chip ${t}" style="display:inline-block;width:22px;border-radius:5px;text-align:center;margin-right:6px">${LETTER(t)}</span>${NAMES[t]}</td><td class="r">${counts[t][0]}</td><td class="r">${counts[t][1]}</td></tr>`).join("");
+  const fyBox = $("yearMoney");
+  if(S.settings.yearMode === "cal"){ fyBox.hidden = true; return; }
+  const t = fyMoney(curYear);
+  fyBox.hidden = false;
+  fyBox.innerHTML = t.n ? `<div class="lbl">Pay in ${yearLabel()} so far</div>
+    <table class="num" style="margin-top:6px"><tr><td>Gross</td><td class="r">${money(t.gross,2)}</td></tr>
+    <tr><td>Tax</td><td class="r">${money(t.tax,2)}</td></tr><tr><td>Super</td><td class="r">${money(t.sup,2)}</td></tr></table>
+    <div class="small muted" style="margin-top:6px">${t.n} pay${t.n>1?"s":""} counted by the date they were paid${t.slips?`, ${t.slips} from your payslips`:""}. The rest are app estimates. Pays before you started logging aren't included.</div>${forecastHTML(curYear)}`
+    : `<div class="small muted">No pays logged for ${yearLabel()} yet.</div>`;
+}
+
+/* ---------- Setup ---------- */
+/* ============ INSTALLABLE APP ============ */
+const APP_URL = "https://shipwreckbay123.github.io/pbt-shifts/";
+const APK_URL = "https://github.com/shipwreckbay123/pbt-shifts/releases/latest/download/pbt-shifts.apk";
+let installPrompt = null;
+function inClaude(){ return !!(window.claude && typeof window.claude.use === "function"); }
+function isApk(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+function isInstalled(){ return isApk() || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; renderInstall(); });
+window.addEventListener("appinstalled", () => { installPrompt = null; renderInstall(); });
+function renderInstall(){
+  const box = document.getElementById("installCard"); if(!box) return;
+  const share = `<div class="small">Share with a mate: <span class="num" style="user-select:all;word-break:break-all">${APP_URL}</span></div>
+    <div class="btns"><button class="btn" type="button" data-copy="${APP_URL}">Copy app link</button></div>`;
+  if(inClaude()){
+    box.innerHTML = `<div class="small">There's a proper app version you can install on your phone. Open this link in <b>Chrome</b>:</div>
+      <div><a class="btn dark" href="${APP_URL}" target="_blank" rel="noopener">Open the app page</a></div>
+      <div class="small muted">Shifts here are saved to your Claude account. The installed app saves them on your phone instead. To move them over: tap <b>Copy backup</b> below, then in the installed app go to Setup → <b>Restore from backup</b> and paste.</div>`;
+    return;
+  }
+  if(isInstalled()){
+    box.innerHTML = `<div class="small">You're using the installed app. Your shifts are saved on this phone only, so tap <b>Copy backup</b> below now and then and keep it somewhere safe (like an email to yourself).</div>` + share;
+    return;
+  }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  box.innerHTML = (ios
+    ? `<div class="small"><b>iPhone:</b> open this page in <b>Safari</b>, tap the <b>Share</b> button (square with an arrow), then <b>Add to Home Screen</b>.</div>`
+    : (installPrompt
+      ? `<div><button class="btn dark" type="button" id="installBtn">Install the app</button></div>`
+      : `<div class="small"><b>Android:</b> in Chrome tap <b>⋮</b> (top right), then <b>Install app</b> or <b>Add to Home screen</b>.</div>`)
+      + `<div class="small">Or download the Android install file: <a href="${APK_URL}">pbt-shifts.apk</a>. Your phone will ask you to allow installing from Chrome the first time.</div>`)
+    + share
+    + `<div class="small muted">Your shifts are saved on your own phone. Nobody else can see them.</div>`;
+  const b = document.getElementById("installBtn");
+  if(b) b.onclick = async () => { const p = installPrompt; if(!p) return; p.prompt(); try { await p.userChoice; } catch(e){} installPrompt = null; renderInstall(); };
+}
+document.addEventListener("click", async e => {
+  const c = e.target.closest("[data-copy]"); if(!c) return;
+  try { await navigator.clipboard.writeText(c.dataset.copy); toast("Link copied"); } catch(err){ toast("Press and hold the link to copy it"); }
+});
+function renderSetup(){
+  const gOpts = [1,2,3,4,5,6].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
+  $("setGrade").innerHTML = gOpts; $("setGrade").value = S.settings.grade;
+  $("shGrade").innerHTML = gOpts; $("shSplitGrade").innerHTML = gOpts; $("shExGrade").innerHTML = gOpts.replace(/Grade /g,"at Grade ");
+  $("setNight").value = S.settings.night;
+  $("setAnchor").value = S.settings.anchor;
+  $("setPhUnworked").checked = !!S.settings.phUnworked;
+  $("setShowPanel").checked = !!S.settings.showPanel;
+  $("setShowSchool").checked = S.settings.showSchool !== false;
+  $("setScrAnchor").value = S.settings.scrAnchor || S.settings.anchor;
+  $("setPanelStart").value = S.settings.panelStart || "";
+  if(document.activeElement !== $("setPanelCycle")) $("setPanelCycle").value = S.settings.panelCycle || "";
+  for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]]) if(document.activeElement !== $(id)) $(id).value = S.settings[key];
+  if(!$("fillStart").value) $("fillStart").value = monday(todayKey());
+  $("fillPbtWeek").innerHTML = PBT16.map((p,i)=>`<option value="${i}">Week ${i+1}: ${p.replace(/X/g,"·")}</option>`).join("");
+  const hk = Object.keys(S.hols).sort().filter(k=>k>=add(todayKey(),-60));
+  $("holList").innerHTML = hk.map(k=>`<div class="li" style="grid-template-columns:1fr auto auto"><div><div class="t">${nice(k)} ${k.slice(0,4)}</div></div><span class="status" style="color:var(--ph);border-color:var(--ph)">${S.hols[k]==="CPD"?"Closed port":"Public hol"}</span><button class="btn" style="min-height:36px;padding:0 10px" data-delhol="${k}" aria-label="Remove ${nice(k)}">✕</button></div>`).join("") || `<div class="empty">No holidays listed.</div>`;
+  const st = step(todayKey());
+  $("rateTable").innerHTML = `<tr><th>Grade (from ${nice(st.from)} ${st.from.slice(0,4)})</th><th class="r">Hourly</th><th class="r">8h day</th></tr>` +
+    [1,2,3,4,5,6].map(g=>`<tr><td>Grade ${g}</td><td class="r">${money(st.hr[g],2)}</td><td class="r">${money(st.hr[g]*8,2)}</td></tr>`).join("") +
+    `<tr><td>Consolidated allowance / shift</td><td class="r" colspan="2">${money(st.ca,2)}</td></tr>
+     <tr><td>Meal allowance</td><td class="r" colspan="2">${money(st.meal,2)}</td></tr>
+     <tr><td>VSE minimum salary / year</td><td class="r" colspan="2">${money(st.min,2)}</td></tr>`;
+}
+
+function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); }
+
+/* ============ DAY SHEET ============ */
+function openSheet(k){
+  sheetDay = k;
+  const sh = S.shifts[k];
+  draft = sh ? {...sh} : { type:"", status: k <= todayKey() ? "worked" : "planned", grade:S.settings.grade, ext:0, note:"" };
+  const pn = panelFor(k);
+  $("shTitle").textContent = nice(k) + " " + k.slice(0,4);
+  $("shNote").value = draft.note || "";
+  $("shGrade").value = draft.grade || S.settings.grade;
+  $("shSplitGrade").value = draft.splitGrade || 2;
+  $("shExGrade").value = draft.exGrade || draft.grade || S.settings.grade;
+  $("shSplitBox").open = !!draft.splitH;
+  $("shDayType").value = draft.hol !== undefined ? draft.hol : holFor(draft.type||"D", startDate(k, draft.type||"D"));
+  const scH = schoolHol(k);
+  $("shPanel").textContent = [pn ? `Panel: ${NAMES[pn].toLowerCase()} week` : "", scH ? `NSW ${scH.toLowerCase()} school holidays` : ""].filter(Boolean).join(" · ");
+  syncSheet();
+  $("scrim").classList.add("open"); $("sheet").classList.add("open");
+  setTimeout(()=>{ const b = document.querySelector('#shType button[aria-pressed="true"]') || document.querySelector('#shType button'); b && b.focus(); }, 50);
+}
+function closeSheet(){ $("scrim").classList.remove("open"); $("sheet").classList.remove("open"); sheetDay=null; }
+function syncSheet(){
+  document.querySelectorAll("#shType button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===draft.type)));
+  document.querySelectorAll("#shStatus button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.v===draft.status)));
+  const paid = "DEN".includes(draft.type) && draft.type;
+  $("shWorkBox").hidden = !paid && draft.type!=="I";
+  $("shScrBox").hidden = draft.type !== "X";
+  $("shAlWeekBox").hidden = draft.type !== "A" || !!(S.shifts[sheetDay] && S.shifts[sheetDay].type === "A");
+  if(draft.type === "X"){
+    if(!draft.scr) draft.scr = defaultScr(sheetDay);
+    document.querySelectorAll("#shScr button").forEach(b => b.setAttribute("aria-pressed", String(draft.scr.includes(b.dataset.v))));
+    const st = scrPeriodStart(sheetDay), saved = S.shifts[sheetDay], before = scrCount(st) - (saved && saved.type==="X" ? (saved.scr||"D").length : 0), after = before + draft.scr.length;
+    $("shScrInfo").innerHTML = `Counts as ${draft.scr.length} scratch${draft.scr.length>1?"es":""}. Period ${nice(st)} – ${nice(add(st,27))}: <b>${after} of ${SCR_LIMIT}</b>` + (after > SCR_LIMIT ? ` <span style="color:var(--ph);font-weight:600">· over the limit, you'd lose the minimum salary guarantee</span>` : "");
+  }
+  $("exVal").textContent = (draft.ext||0) + "h";
+  $("spVal").textContent = (draft.splitH||0) + "h";
+  document.querySelectorAll("#shJob button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.job === draft.job)));
+  $("shExGrade").hidden = !draft.ext;
+  $("shSub").textContent = draft.type && TIMES[draft.type] ? timesFor(sheetDay, draft.type) + holNote(sheetDay, draft.type) : (draft.type==="I" ? "You'll find out the day before. Change it once you're allocated." : draft.type==="L" ? "Self-funded RDO you booked. Paid as VSE LVE PD from your VSE PAID bank." : draft.type==="S" ? "Personal/carer's leave. Uses 7 hours of your sick leave balance." : draft.type==="X" ? "Scratched in Microster. Not paid, and doesn't count toward six in a row." : draft.type==="A" ? "Annual leave. Uses 7 hours of your annual leave balance." : draft.type==="U" ? "You were available but not given a shift. Not paid; counts toward your minimum salary check." : "Pick a shift");
+  const dt = $("shDayType").value;
+  const c = paid ? calcShift(sheetDay, {...draft, hol: dt}) : null;
+  if(c){
+    $("shMeal").checked = !!c.meal;
+    $("shMealHint").textContent = draft.meal === undefined ? (c.mealAuto ? "(added automatically)" : "(not due on this shift)") : "(set by you)";
+  }
+  const lp = Number(S.settings.leavePay)||0;
+  renderWorth(c);
+  $("shPreview").innerHTML = draft.type==="A" && S.shifts[sheetDay] && S.shifts[sheetDay].nopay
+    ? `<div class="small muted">Weekend of an annual leave week. The week is paid as 5 days (Mon–Fri), so this day isn't paid on its own.</div>`
+    : draft.type==="A" && !$("shAlWeekBox").hidden && $("shAlWeek").checked
+    ? `<div><div class="lbl">Annual leave week pays</div><div class="small muted">1/52 of the VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay)*5,2)}</div>`
+    : draft.type==="A"
+    ? `<div><div class="lbl">Annual leave day pays</div><div class="small muted">1/5 of weekly VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay),2)}</div>`
+    : draft.type==="S"
+    ? `<div><div class="lbl">Sick day pays</div><div class="small muted">7 hours at $55.50, the same as your payslips</div></div><div class="v num">${money(sickDayPay(sheetDay),2)}</div>`
+    : c
+    ? `<div><div class="lbl">This shift pays</div><div class="small muted num">${c.splitH?`${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade}`:`8h × ${money(c.rate,2)}`} × ${c.m} (${multWhy(draft.type, c.start, c.hol)})${c.exH?` + ${c.exH}h × ${c.om}`:""} + allowance${c.meal?" + meal":""}</div></div><div class="v num">${money(c.gross,2)}</div>`
+    : `<div class="small muted">${draft.type==="I"?"Irregular days aren't counted in pay until you set Day, Evening or Night.":draft.type==="L"?`Self-funded RDO: ${money(lp,2)}`:draft.type==="X"?"Scratched: no pay for this day.":"No pay for this day."}</div>`;
+}
+function renderWorth(c){
+  const box = $("shWorth");
+  if(!c){ box.hidden = true; return; }
+  const w = worthIt(sheetDay, {...draft, hol: $("shDayType").value});
+  const hrs = SHIFT_HOURS + (c.exH||0), run = runIfWorked(sheetDay);
+  const taxReal = (c.gross - c.meal) * w.marg, keep = c.gross - taxReal;   // meal allowance isn't taxed
+  let html = `<div class="lbl">Worth it? If you work this shift</div>
+    <div class="preview"><div><div class="small muted">You keep, after tax</div><div class="v num" style="color:var(--good)">${money(keep,0)}</div></div>
+      <div style="text-align:right"><div class="small muted num">${money(keep/hrs,2)} an hour</div><div class="small muted num">of ${money(c.gross,0)} before tax</div></div></div>
+    <table class="num small"><tr><td>Tax on it for the year</td><td class="r">${money(taxReal,0)}</td></tr>
+      <tr><td>Your tax rate on extra pay</td><td class="r">${Math.round(w.marg*100)}%</td></tr>
+      <tr><td>Yearly income it's based on</td><td class="r">${money(w.ann.amount,0)}</td></tr>`;
+  if(w.p0.topUp <= 0) html += `<tr><td>Tax taken out of that pay</td><td class="r">${money(w.tax,0)}</td></tr>`;
+  html += `</table><div class="small muted">${w.ann.from === "payslip" ? "Yearly income comes from the year-to-date figure on your latest payslip." : "Add a payslip PDF for a better yearly estimate. For now this uses this fortnight's pay × 26."} Tax rate includes the 2% Medicare levy.</div>`;
+  if(w.ann.amount > 170000 && w.ann.amount <= 190000) html += `<div class="small muted">You're close to $190,000 a year. Pay over that is taxed at 47%, so extra shifts would keep less.</div>`;
+  if(w.p0.topUp > 0) html += `<div class="note">This fortnight is under the VSE minimum salary. Working it mostly reduces the top-up you'd pay back later, so this pay won't go up by much, but over time it's still worth what's shown.</div>`;
+  else if(w.tax > taxReal + 15) html += `<div class="small muted">That pay will have more tax taken out than the shift really costs you. Pay is taxed per fortnight as if every fortnight were this big, and the difference comes back at tax time.</div>`;
+  if(run > 6) html += `<div class="note" style="border-color:var(--ph);background:rgba(210,60,60,.08)">This would be shift ${run} in a row. The EBA limit is six (Part B 1.11.1).</div>`;
+  box.innerHTML = html; box.hidden = false;
+}
+function saveDraft(k, d){
+  if(!d.type){ delete S.shifts[k]; return; }
+  const dt = $("shDayType").value;
+  const autoHol = holFor(d.type, startDate(k, d.type));
+  const out = { type:d.type, status: "OLSXAU".includes(d.type) ? "worked" : d.status, grade:Number(d.grade)||S.settings.grade, ext:d.ext||0, note:d.note||"" };
+  if(d.splitH){ out.splitH = d.splitH; out.splitGrade = Number(d.splitGrade)||2; }
+  if(d.ext && d.exGrade && Number(d.exGrade)!==out.grade) out.exGrade = Number(d.exGrade);
+  if(d.meal !== undefined) out.meal = !!d.meal;
+  if(d.type === "X") out.scr = d.scr || defaultScr(k);
+  if(d.job && "DENI".includes(d.type)) out.job = d.job;
+  if(d.type === "A" && d.nopay) out.nopay = true;
+  if(dt !== autoHol) out.hol = dt;
+  S.shifts[k] = out;
+}
+function blockEnd(k){ // last day of the panel week (a Monday with the default cycle), else Sunday
+  const st = S.settings;
+  if(st.showPanel && st.panelStart){ const n = Math.floor(diffDays(st.panelStart,k)/7); return add(st.panelStart, n*7+6); }
+  return add(monday(k),6);
+}
+
+/* ============ EVENTS ============ */
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-gap]");
+  if(g){
+    const k = g.dataset.gap, as = g.dataset.as;
+    S.shifts[k] = as === "X" ? { type:"X", status:"worked", scr:"DEN", grade:S.settings.grade, ext:0, note:"" }
+      : { type:as, status:"worked", grade:S.settings.grade, ext:0, note:"" };
+    persist([k]); renderAll(); toast(`${nice(k)}: ${NAMES[as]}`); return;
+  }
+  const cell = e.target.closest("[data-k]");
+  if(cell && !e.target.closest("#sheet")){ openSheet(cell.dataset.k); return; }
+  const dh = e.target.closest("[data-delhol]");
+  if(dh){ delete S.hols[dh.dataset.delhol]; persist(); renderAll(); }
+});
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x===b)));
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.v));
+  window.scrollTo(0,0);
+}));
+$("mPrev").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()-1); curMonth = K(d).slice(0,7); renderMonth(); };
+$("mNext").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()+1); curMonth = K(d).slice(0,7); renderMonth(); };
+$("fPrev").onclick = () => { curF = add(curF,-14); renderPay(); };
+$("fNext").onclick = () => { curF = add(curF,14); renderPay(); };
+$("yPrev").onclick = () => { curYear--; renderYear(); };
+document.querySelectorAll("#yMode button").forEach(b => b.onclick = () => {
+  const mode = b.dataset.v; if((S.settings.yearMode||"fy") === mode) return;
+  curYear = mode === "cal" ? Number(todayKey().slice(0,4)) : fyEnd(todayKey());
+  S.settings.yearMode = mode; persist(); renderYear();
+});
+$("yNext").onclick = () => { curYear++; renderYear(); };
+
+document.querySelectorAll("#shType button").forEach(b => b.onclick = () => {
+  draft.type = b.dataset.v;
+  if(draft.type==="N" && draft.ext>1) draft.ext = 1;
+  $("shDayType").value = draft.hol !== undefined ? draft.hol : holFor(draft.type, startDate(sheetDay, draft.type));
+  syncSheet();
+});
+document.querySelectorAll("#shStatus button").forEach(b => b.onclick = () => { draft.status = b.dataset.v; syncSheet(); });
+$("exMinus").onclick = () => { draft.ext = Math.max(0,(draft.ext||0)-1); syncSheet(); };
+$("exPlus").onclick = () => { draft.ext = Math.min(4,(draft.ext||0)+1); if(!draft.exGrade) draft.exGrade = Number($("shExGrade").value)||draft.grade; syncSheet(); };
+$("shGrade").onchange = e => { delete draft.job; draft.grade = Number(e.target.value); if(!draft.exGrade) $("shExGrade").value = draft.grade; syncSheet(); };
+$("shMeal").onchange = e => { draft.meal = e.target.checked; syncSheet(); };
+$("shJob").innerHTML = JOBS.map(j => `<button type="button" data-job="${j.id}" aria-pressed="false">${j.name}</button>`).join("");
+document.querySelectorAll("#shJob button").forEach(b => b.onclick = () => {
+  const j = JOB(b.dataset.job); if(!j) return;
+  draft.job = j.id; draft.grade = j.g; draft.splitH = j.sh || 0; if(j.sh) draft.splitGrade = j.sg; else delete draft.splitGrade;
+  $("shGrade").value = j.g; if(j.sg) $("shSplitGrade").value = j.sg; $("shSplitBox").open = !!j.sh;
+  if(!draft.exGrade) $("shExGrade").value = j.g;
+  syncSheet();
+});
+document.querySelectorAll("#shScr button").forEach(b => b.onclick = () => {
+  const v = b.dataset.v; let cur = draft.scr || "";
+  cur = cur.includes(v) ? cur.replace(v,"") : cur + v;
+  if(!cur) cur = v; // at least one shift
+  draft.scr = "DEN".split("").filter(c => cur.includes(c)).join(""); syncSheet();
+});
+$("spMinus").onclick = () => { delete draft.job; draft.splitH = Math.max(0,(draft.splitH||0)-1); syncSheet(); };
+$("spPlus").onclick = () => { delete draft.job; draft.splitH = Math.min(8,(draft.splitH||0)+1); if(!draft.splitGrade) draft.splitGrade = Number($("shSplitGrade").value)||2; syncSheet(); };
+$("shSplitGrade").onchange = e => { delete draft.job; draft.splitGrade = Number(e.target.value); syncSheet(); };
+$("shExGrade").onchange = e => { draft.exGrade = Number(e.target.value); syncSheet(); };
+$("shDayType").onchange = () => syncSheet();
+$("shNote").oninput = e => { draft.note = e.target.value; };
+$("shSave").onclick = () => {
+  const k = sheetDay;
+  if(draft.type === "A" && !$("shAlWeekBox").hidden && $("shAlWeek").checked){
+    const mon = monday(k), keys = []; let kept = 0;
+    for(let i=0;i<7;i++){
+      const d = add(mon,i), ex = S.shifts[d];
+      if(ex && ex.status === "worked" && "DEN".includes(ex.type)){ kept++; continue; }   // never overwrite a shift you worked
+      S.shifts[d] = { type:"A", status:"worked", grade:S.settings.grade, ext:0, note:"", ...(i >= 5 ? {nopay:true} : {}) };
+      keys.push(d);
+    }
+    persist(keys); closeSheet(); renderAll();
+    toast(`Annual leave ${nice(mon)} – ${nice(add(mon,6))}` + (kept ? ` (${kept} worked shift${kept>1?"s":""} kept)` : ""));
+    return;
+  }
+  saveDraft(k, draft); persist([k]); closeSheet(); renderAll(); toast("Saved");
+};
+$("shAlWeek").onchange = () => syncSheet();
+$("shWeek").onclick = () => {
+  if(!draft.type){ toast("Pick a shift first"); return; }
+  saveDraft(sheetDay, draft);
+  const end = blockEnd(sheetDay); let n = 0;
+  for(let k=add(sheetDay,1); k<=end; k=add(k,1)){
+    const status = "OLSXAU".includes(draft.type) ? "worked" : (k<=todayKey() ? draft.status : "planned");
+    S.shifts[k] = { type:draft.type, status, grade:Number(draft.grade)||S.settings.grade, ext:0, note:"" };
+    if(draft.job){ S.shifts[k].job = draft.job; if(draft.splitH){ S.shifts[k].splitH = draft.splitH; S.shifts[k].splitGrade = draft.splitGrade; } }
+    if(draft.type==="X") S.shifts[k].scr = draft.scr || defaultScr(k); n++;
+  }
+  persist([sheetDay]); closeSheet(); renderAll(); toast(`Filled ${n+1} days to ${nice(end)}`);
+};
+$("shClear").onclick = () => { delete S.shifts[sheetDay]; persist(); closeSheet(); renderAll(); toast("Cleared"); };
+$("shClose").onclick = closeSheet;
+$("scrim").onclick = closeSheet;
+document.addEventListener("keydown", e => { if(e.key==="Escape" && sheetDay) closeSheet(); });
+
+// settings
+$("setGrade").onchange = e => { S.settings.grade = Number(e.target.value); persist(); renderAll(); };
+$("setNight").onchange = e => { S.settings.night = e.target.value; persist(); renderAll(); };
+$("setAnchor").onchange = e => { if(e.target.value){ S.settings.anchor = e.target.value; curF = null; persist(); renderAll(); } };
+$("setPhUnworked").onchange = e => { S.settings.phUnworked = e.target.checked; persist(); renderAll(); };
+$("setScrAnchor").onchange = e => { if(e.target.value){ S.settings.scrAnchor = e.target.value; persist(); renderAll(); } };
+$("setShowSchool").onchange = e => { S.settings.showSchool = e.target.checked; persist(); renderAll(); };
+$("setShowPanel").onchange = e => { S.settings.showPanel = e.target.checked; persist(); renderAll(); };
+$("setPanelStart").onchange = e => { if(e.target.value){ S.settings.panelStart = e.target.value; persist(); renderAll(); } };
+$("setPanelCycle").onchange = e => { S.settings.panelCycle = e.target.value.toUpperCase().replace(/[^DENI]/g,""); persist(); renderAll(); };
+for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
+  $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
+$("holAdd").onclick = () => { const k = $("holDate").value; if(!k){ toast("Pick a date"); return; } S.hols[k] = $("holType").value; persist(); renderAll(); toast("Holiday added"); };
+
+// fill tool
+let fillDays = "mf";
+function syncFill(){
+  const p = $("fillPattern").value;
+  $("fillWeekBox").hidden = p!=="week";
+  $("fillCustomBox").hidden = p!=="custom";
+  $("fillPbtBox").hidden = p!=="pbt16";
+  $("fillWeeks").value = p==="week" ? 1 : (p==="pbt16" ? 16 : Math.max(1, Math.ceil(($("fillCustom").value.replace(/\s/g,"").length||7)/7)));
+}
+$("fillPattern").onchange = syncFill;
+$("fillCustom").oninput = syncFill;
+document.querySelectorAll("#fillDays button").forEach(b => b.onclick = () => { fillDays = b.dataset.v; document.querySelectorAll("#fillDays button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); });
+$("fillGo").onclick = () => {
+  const start = $("fillStart").value; if(!start){ toast("Pick a start date"); return; }
+  const weeks = Math.max(1, Math.min(104, Number($("fillWeeks").value)||1));
+  const p = $("fillPattern").value; let seq = "";
+  if(p==="week"){ const s = $("fillShift").value; seq = fillDays==="mf" ? s.repeat(5)+"OO" : s.repeat(7); }
+  else if(p==="custom"){ seq = $("fillCustom").value.toUpperCase().replace(/[^DENIO]/g,""); if(!seq){ toast("Type a pattern like EEEEEOO"); return; } }
+  else { const w0 = Number($("fillPbtWeek").value); for(let i=0;i<16;i++) seq += PBT16[(w0+i)%16]; seq = seq.replace(/X/g,"I"); }
+  const overwrite = $("fillOverwrite").checked;
+  const days = weeks*7; let added = 0;
+  for(let i=0;i<days;i++){
+    const k = add(start,i), c = seq[i % seq.length];
+    if(c==="O" && p==="week"){ continue; }
+    if(S.shifts[k] && !overwrite) continue;
+    S.shifts[k] = { type:c, status: c==="O" ? "worked" : "planned", grade:S.settings.grade, ext:0, note:"" };
+    added++;
+  }
+  persist(); renderAll(); curMonth = start.slice(0,7); renderMonth();
+  toast(`Added ${added} day${added===1?"":"s"}`);
+};
+
+// backup
+$("bkCopy").onclick = async () => {
+  const txt = JSON.stringify(S);
+  try { await navigator.clipboard.writeText(txt); toast("Backup copied. Paste it into a note or email to yourself."); }
+  catch(e){ $("bkBox").hidden = false; $("bkText").value = txt; $("bkText").select(); toast("Copy the text in the box"); }
+};
+$("bkShow").onclick = () => { $("bkBox").hidden = !$("bkBox").hidden; };
+$("bkRestore").onclick = () => {
+  try { const o = JSON.parse($("bkText").value); if(!o || typeof o.shifts!=="object") throw 0; S = merge(o); persist(); renderAll(); toast("Backup restored"); $("bkBox").hidden = true; }
+  catch(e){ toast("That doesn't look like a backup from this app"); }
+};
+
+/* ============ MICROSTER SCREENSHOT IMPORT ============ */
+let sampleFn = null, impMax = 4, impRows = [];
+async function setupImport(){
+  try {
+    if(!window.claude || typeof window.claude.use !== "function") return;
+    const s = await window.claude.use("sample");
+    if(!s){ impNote("Reading screenshots only works when this page is opened from your Claude account."); return; }
+    const lim = await s.limits().catch(()=>null);
+    if(!lim || !lim.images){ impNote("This view can't send pictures to Claude. Open the page in Chrome while signed in to Claude, then try again."); return; }
+    sampleFn = s; impMax = lim.images.maxCount || 4;
+    if(lim.images.mediaTypes) $("impFile").accept = lim.images.mediaTypes.join(",");
+    $("impWrap").hidden = false;
+  } catch(e){}
+}
+function impNote(t){ $("impWrap").hidden = false; $("impPick").setAttribute("aria-disabled","true"); $("impStatus").textContent = t; }
+function autoStatus(k, type){
+  const t = todayKey(); if(k < t) return "worked"; if(k > t) return "planned";
+  const end = {D:14, E:22}[type]; return end && new Date().getHours() >= end ? "worked" : "planned";
+}
+const IMPORT_PROMPT = `These are screenshots of a DP World Port Botany stevedore's roster in Microster (the "My Roster" month calendar).
+How to read them:
+- The month and year are in the yellow header bar, for example "November 2026". Weeks start on Sunday.
+- Each day cell has the day-of-month number at its top right. Under it a cell may show a shift code letter and times, for example "E" then "1400-2200 (8)".
+- Codes: D = day shift 0600-1400, E = evening shift 1400-2200, N = night shift 2200-0600. Use the date of the cell the night is written in.
+- "OFF" WITH times under it (for example "OFF" then "0600-1300 (7)") is a self-funded RDO the worker booked: code RDO.
+- A second line in the same cell is an extension, for example "D 0600-1400 (8)" then "D 1400-1800 (4)": that is one D shift with extra_hours 4.
+- The "Unavailability" page uses the same calendar. A light-blue bar with shift letters, for example "DEN", "D" or "EN", is a granted unavailability (a scratch): code SCRATCH, and put the letters in "scratched", for example "DEN".
+- On either page a shift that is 7 hours long is a leave day, not a worked shift: "D 0600-1300" or "N 2200-0500" is SICK; "OFF 0600-1300" is RDO.
+- A day showing 7 hours, for example "(7)", is a leave day, not a worked shift: "OFF" with times = RDO; AL or ANNUAL = ANNUAL; a shift letter (D, E or N) with (7) hours = SICK.
+- Other codes: AL, ANN or ANNUAL = ANNUAL; SCR, SCRATCH or UNAVAIL = SCRATCH; SICK, SIC, SL, PL, PCL, PERS, PER, CARER or anything about sick/personal/carer's leave = SICK; LSL = LEAVE; RO, PHD, CPD, DIL or anything else = OTHER.
+- Skip cells that say "Not Finalised", empty cells, and days from the next or previous month.
+- If a code letter is missing but times are shown: a start between 0500 and 0800 is D, between 1200 and 1600 is E, between 2000 and 2300 is N.
+Reply with only a JSON array, one object per day that shows a shift or a code:
+[{"date":"YYYY-MM-DD","code":"D"|"E"|"N"|"RDO"|"SICK"|"ANNUAL"|"SCRATCH"|"LEAVE"|"OTHER","extra_hours":0,"scratched":"","label":"what the cell says, e.g. E 1400-2200 (8)"}]
+If you cannot read the month and year, reply [].`;
+$("impPick").addEventListener("click", () => {
+  $("impStatus").textContent = "Pick your Microster screenshot. If nothing opens, open this page in Chrome instead (⋮ menu → Open in browser) and try again.";
+});
+$("impFile").onchange = async e => {
+  const files = Array.from(e.target.files || []).slice(0, impMax);
+  e.target.value = "";
+  if(!files.length) { $("impStatus").textContent = "No picture picked."; return; }
+  if(!sampleFn){ $("impStatus").textContent = "Claude can't read pictures in this view. Open the page in Chrome while signed in to Claude."; return; }
+  $("impList").innerHTML = ""; $("impBtns").hidden = true; $("impPick").setAttribute("aria-disabled","true");
+  $("impStatus").textContent = `Reading ${files.length} screenshot${files.length>1?"s":""}… this can take up to a minute.`;
+  try {
+    const data = await sampleFn.json(IMPORT_PROMPT, { images: files });
+    const map = {D:"D",E:"E",N:"N",RDO:"L",LEAVE:"L",SICK:"S",ANNUAL:"A",SCRATCH:"X"};
+    impRows = (Array.isArray(data) ? data : []).filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)))
+      .map(r => { const scr = String(r.scratched||"").toUpperCase().replace(/[^DEN]/g,""); return { k:String(r.date), type: map[String(r.code).toUpperCase()] || "", ext: Math.max(0, Math.min(4, Math.round(Number(r.extra_hours)||0))), ...(scr ? {scr: "DEN".split("").filter(c => scr.includes(c)).join("")} : {}), label: String(r.label||r.code||"").slice(0,48) }; })
+      .sort((a,b) => a.k < b.k ? -1 : 1);
+    if(!impRows.length){ $("impStatus").textContent = "I couldn't find any shifts in that picture. Try a screenshot that shows the month name at the top."; return; }
+    showImpRows(`Found ${impRows.length} day${impRows.length>1?"s":""}. Untick anything that's wrong, then add. Grades aren't shown in Microster, so these use your usual grade. Change any you worked at a higher grade.`);
+  } catch(err){
+    const c = err && err.code;
+    $("impStatus").textContent = c === "not_granted" ? "Claude wasn't allowed to read the screenshot. Tap the button again and choose Allow." :
+      c === "image_rejected" ? "That picture couldn't be read. Try a normal screenshot (PNG or JPG)." :
+      c === "rate_limited" ? "Too many tries for now. Give it a few minutes." :
+      c === "invalid_json" ? "The roster couldn't be read clearly. Try again, or crop the screenshot to just the calendar." :
+      "Something went wrong reading the screenshot. Try again.";
+  } finally { $("impPick").removeAttribute("aria-disabled"); }
+};
+function showImpRows(msg){
+  $("impStatus").textContent = msg;
+  $("impList").innerHTML = impRows.map((r,i) => {
+    const ex = S.shifts[r.k];
+    const same = ex && ex.type === r.type && (r.grade === undefined || Number(ex.grade) === r.grade) && (!r.ext || ex.ext === r.ext);
+    const willDo = r.type === "CLEAR" ? (ex ? `Clears ${NAMES[ex.type]}` : "Nothing to clear") : !r.type ? "Not added (not a shift)" : same ? "Already in calendar" : ex && ex.type !== r.type ? `Replaces ${NAMES[ex.type]}` : ex ? "Updates this day" : ("LSXOAU".includes(r.type) ? "Add" : autoStatus(r.k, r.type) === "worked" ? "Add as worked" : "Add as planned");
+    return `<label class="li" style="grid-template-columns:auto auto 1fr;cursor:pointer">
+      <input type="checkbox" data-imp="${i}" ${r.type ? "checked" : "disabled"} style="width:22px;height:22px;accent-color:var(--navy)">
+      <div class="tag chip ${r.type && r.type!=="CLEAR" ? r.type : "O"}">${r.type==="CLEAR" ? "✕" : r.type ? LETTER(r.type) : "–"}</div>
+      <div><div class="t">${nice(r.k)} ${r.k.slice(0,4)} · ${esc(r.label)}</div><div class="s">${willDo}</div></div></label>`;
+  }).join("");
+  $("impBtns").hidden = false;
+}
+function parsePasted(text){
+  const rows = [], bad = [];
+  const codes = {D:"D",E:"E",N:"N",RDO:"L",OFF:"L",SICK:"S",SIC:"S",SL:"S",PL:"S",PCL:"S",S:"S",L:"L",AL:"A",ANN:"A",ANNUAL:"A",A:"A",LEFTOFF:"U",LO:"U",U:"U",ALW:"ALW",ALWEEK:"ALW",CLEAR:"CLEAR",DELETE:"CLEAR",SCR:"X",SCRATCH:"X",X:"X"};
+  // Phones sometimes paste a list as one long line: start a new line before every date.
+  const lines = String(text).replace(/[\u00a0\t,;]+/g," ").replace(/\s*(?=\b\d{4}-\d{1,2}-\d{1,2}\b)/g,"\n").split(/\r?\n+/);
+  for(const raw of lines){
+    const line = raw.trim(); if(!line) continue;
+    const t = line.split(/[\s,]+/);
+    const m = (t[0]||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    const type = codes[(t[1]||"").toUpperCase()];
+    if(!m || !type){ bad.push(line); continue; }
+    const r = { k:`${m[1]}-${pad(m[2])}-${pad(m[3])}`, type, label: t.slice(1).join(" ") };
+    for(const tok of t.slice(2)){
+      let x;
+      if((x = tok.match(/^G([1-6])$/i))) r.grade = Number(x[1]);
+      else if((x = tok.match(/^\+(\d)h?(?:@G([1-6]))?$/i))){ r.ext = Math.min(4, Number(x[1])); if(x[2]) r.exGrade = Number(x[2]); }
+      else if((x = tok.match(/^(\d)h@G([1-6])$/i))){ r.splitH = Math.min(8, Number(x[1])); r.splitGrade = Number(x[2]); }
+      else if(JOB_ALIASES[tok.toUpperCase()]) r.job = JOB_ALIASES[tok.toUpperCase()];
+      else if(type === "X" && /^[DEN]{1,3}$/i.test(tok)) r.scr = [...new Set(tok.toUpperCase())].join("");
+    }
+    if(r.job){ const j = JOB(r.job); if(r.grade === undefined) r.grade = j.g; if(j.sh && r.splitH === undefined){ r.splitH = j.sh; r.splitGrade = j.sg; } }
+    rows.push(r);
+  }
+  // "ALW" = annual leave for the whole Mon–Sun week (Sat/Sun not paid separately)
+  const out = [];
+  for(const r of rows){
+    if(r.type === "ALW"){ const mon = monday(r.k); for(let i=0;i<7;i++) out.push({ k:add(mon,i), type:"A", label:"Annual leave week", ...(i>=5?{nopay:true}:{}) }); }
+    else out.push(r);
+  }
+  return {rows: out.sort((a,b) => a.k < b.k ? -1 : 1), bad};
+}
+$("pasteGo").onclick = () => {
+  const {rows, bad} = parsePasted($("pasteText").value);
+  if(!rows.length){ $("impStatus").textContent = "I couldn't read any lines. Each line needs a date like 2026-10-14 and then D, E, N, RDO or SICK."; return; }
+  impRows = rows;
+  showImpRows(`Found ${rows.length} day${rows.length>1?"s":""}${bad.length?` (${bad.length} line${bad.length>1?"s":""} skipped)`:""}. Untick anything that's wrong, then add.`);
+};
+$("impApply").onclick = () => {
+  let n = 0;
+  document.querySelectorAll("[data-imp]").forEach(cb => {
+    if(!cb.checked) return; const r = impRows[Number(cb.dataset.imp)]; if(!r || !r.type) return;
+    if(r.type === "CLEAR"){ if(S.shifts[r.k]){ delete S.shifts[r.k]; n++; } return; }
+    const ex = S.shifts[r.k];
+    const status = "LSXOAU".includes(r.type) ? "worked" : (ex && ex.type === r.type && ex.status === "worked") ? "worked" : autoStatus(r.k, r.type);
+    const base = ex && ex.type === r.type ? {...ex} : { type:r.type, grade:(ex && ex.grade) || S.settings.grade, ext:0, note:(ex && ex.note) || "" };
+    base.status = status; delete base.auto;
+    if(r.fromSlip) base.src = "slip";
+    if(r.grade) base.grade = r.grade;
+    if(r.ext){ base.ext = r.ext; if(r.exGrade) base.exGrade = r.exGrade; }
+    if(r.splitH){ base.splitH = r.splitH; base.splitGrade = r.splitGrade; }
+    if(r.type === "X") base.scr = r.scr || base.scr || defaultScr(r.k);
+    if(r.type === "A"){ if(r.nopay) base.nopay = true; else delete base.nopay; }
+    if(r.job) base.job = r.job; else if(r.fromSlip) delete base.job;
+    if(r.fromSlip && "DEN".includes(r.type)){ base.meal = !!r.meal; if(!r.splitH){ delete base.splitH; delete base.splitGrade; } if(!r.ext){ base.ext = 0; delete base.exGrade; } }
+    if(JSON.stringify(base) !== JSON.stringify(ex||null)){ S.shifts[r.k] = base; n++; }
+  });
+  saveSlips();
+  impRows = []; $("impList").innerHTML = ""; $("impBtns").hidden = true; $("pasteText").value = "";
+  $("impStatus").textContent = `Added or updated ${n} day${n===1?"":"s"}.`;
+  persist(); renderAll(); toast(`Updated ${n} day${n===1?"":"s"}`);
+};
+$("impCancel").onclick = () => { impRows = []; pendingSlips = []; $("impList").innerHTML = ""; $("impBtns").hidden = true; $("impStatus").textContent = "Cancelled. Nothing was changed."; };
+
+/* ============ PAYSLIP PDF IMPORT (read on the device, nothing sent) ============ */
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+function loadScript(src){ return new Promise((ok, bad) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = () => bad(new Error("load")); document.head.appendChild(sc); }); }
+let pdfReady = null;
+function ensurePdf(){
+  if(!pdfReady) pdfReady = (async () => {
+    await loadScript(PDFJS + "pdf.worker.min.js");   // runs in the page (workers from other sites are blocked)
+    await loadScript(PDFJS + "pdf.min.js");
+    return window.pdfjsLib;
+  })();
+  return pdfReady;
+}
+async function pdfText(file){
+  const lib = await ensurePdf();
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported:false }).promise;
+  let out = "";
+  for(let i=1; i<=doc.numPages; i++){
+    const page = await doc.getPage(i), tc = await page.getTextContent();
+    const lines = [];
+    for(const it of tc.items){
+      if(!it.str || !it.str.trim()) continue;
+      const y = it.transform[5], x = it.transform[4];
+      let L = lines.find(l => Math.abs(l.y - y) < 2.5);
+      if(!L){ L = { y, items: [] }; lines.push(L); }
+      L.items.push({ x, s: it.str });
+    }
+    lines.sort((a,b) => b.y - a.y);
+    for(const L of lines) out += L.items.sort((a,b) => a.x - b.x).map(t => t.s).join(" ").replace(/\s+/g," ") + "\n";
+  }
+  return out;
+}
+const dmy = t => { const m = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? `${m[3]}-${pad(m[2])}-${pad(m[1])}` : ""; };
+function parsePayslip(text){
+  const T = text.replace(/\/\s+/g, "/");
+  const num = re => { const m = T.match(re); return m ? Number(m[1].replace(/,/g,"")) : null; };
+  const per = T.match(/PAY PERIOD:\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*TO\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+  if(!per) return null;
+  const slip = { from: dmy(per[1]), to: dmy(per[2]), payDate: dmy((T.match(/PAY DATE:\s*(\d{1,2}\/\d{1,2}\/\d{4})/)||[])[1]||""),
+    gross: num(/\bGROSS\s+([\d,]+\.\d\d)/), tax: num(/\bTAX\s+([\d,]+\.\d\d)/), net: num(/\bNET\s+([\d,]+\.\d\d)/),
+    bonus: num(/\bBONUS\s+([\d,]+\.\d\d)/) || 0, vsePaid: num(/VSE PAID\s+([\d,]+\.\d\d)/) || 0,
+    meal: num(/\bMEAL\s+([\d,]+\.\d\d)/) || 0, super: num(/SUPER:-\s*\S+\s+([\d,]+\.\d\d)/),
+    bank: num(/\bBANK\s*\d*\s+([\d,]+\.\d\d)/) || 0,
+    totalDedn: num(/TOTAL DEDN\s+([\d,]+\.\d\d)/),
+    hrs: { sick: num(/SICK LEAVE\s+[\d,]+\.\d\d\s+([\d.]+)/) || 0, vsp: num(/VSE LVE PD\s+[\d,]+\.\d\d\s+([\d.]+)/) || 0, ph: num(/PUBLIC HOL\s+[\d,]+\.\d\d\s+([\d.]+)/) || 0 },
+    bal: (() => {
+      const g = (code, part) => { const m = T.match(new RegExp(code + "\\s*-\\s*ENT:\\s*([\\d.]+)(-?)" + (part==="acc" ? "\\s*ACC:\\s*([\\d.]+)(-?)" : ""))); if(!m) return null;
+        return part==="acc" ? (m[4]==="-" ? -1 : 1) * Number(m[3]) : (m[2]==="-" ? -1 : 1) * Number(m[1]); };
+      return { annEnt:g("ANN","ent"), annAcc:g("ANN","acc"), sicEnt:g("SIC","ent"), sicAcc:g("SIC","acc"), vspEnt:g("VSP","ent") };
+    })(),
+    ytdGross: num(/\bGROSS\s+[\d,]+\.\d\d\s+([\d,]+\.\d\d)/), ytdTaxable: num(/\bTAXABLE\s+[\d,]+\.\d\d\s+([\d,]+\.\d\d)/) };
+  const rows = [], seen = new Set();
+  for(const line of T.split("\n")){
+    const m = line.match(/^\s*(\d{1,2}\/\d{1,2}\/\d{4})\s+(.*?)\s+(D|E|N|RO|CPD|PHD|PH|[A-Z]{2,4})\s+(?:[A-Z]{3,}(\d))?\s*(?:(CE|ME)\s+[\d.]+\s+)?([\d.]+)\s+([\d.]+)(?:\s+([\d,]+\.\d\d))?\s*$/);
+    if(!m) continue;
+    const key = line.trim(); if(seen.has(key)) continue; seen.add(key); // page 2 can repeat lines
+    rows.push({ k: dmy(m[1]), sh: m[3], grade: m[4] ? Number(m[4]) : null, allow: m[5] || "", base: Number(m[6]), ot: Number(m[7]), amt: m[8] ? Number(m[8].replace(/,/g,"")) : 0 });
+  }
+  const leave = [];
+  // LEAVE TAKEN lines, e.g. "VSP VSE Leave(Self Funded) 4/10/2026 4/10/2026 7.00000000"
+  const lre = /^\s*([A-Z]{2,5})\s+([^\n]*?)\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+[\d.]+\s*$/gm;
+  let lm; while((lm = lre.exec(T))){
+    const code = lm[1], desc = lm[2];
+    const kind = /self.?funded|VSE Leave/i.test(desc) || code === "VSP" ? "VSP"
+      : /sick|personal|carer|compassion/i.test(desc) || /^(SIC|SICK|SL|PL|PCL|PER|PERS|CAR)$/.test(code) ? "SIC"
+      : /annual/i.test(desc) || code === "ANN" ? "ANN" : code;
+    leave.push({ code: kind, from: dmy(lm[3]), to: dmy(lm[4]) });
+  }
+  slip.rows = rows; slip.leave = leave;
+  return slip;
+}
+/* ---- Payslip check: each payslip line against the EBA, plus what you logged before the payslip came ---- */
+function checkPayslip(slip, prior){
+  const issues = [], byDay = {};
+  for(const r of slip.rows) (byDay[r.k] = byDay[r.k] || []).push(r);
+  const lv = {}; for(const l of slip.leave) for(let k=l.from; k<=l.to; k=add(k,1)) lv[k] = l.code;
+  let checked = 0;
+  for(const k of Object.keys(byDay).sort()){
+    const rs = byDay[k], work = rs.filter(r => "DEN".includes(r.sh) && r.sh.length===1 && (r.base > 0 || r.ot > 0));
+    if(!work.length || lv[k] === "SIC") continue;
+    checked++;
+    const type = work[0].sh, st = step(k), hol = holFor(type, k);   // payslip dates nights by the day they start
+    const m = shiftMult(type, k, hol), om = otMult(k, hol);
+    const why = multWhy(type, k, hol);
+    let otHours = 0;
+    for(const r of work){
+      if(!r.grade){ continue; }
+      const rate = hrx(st, r.grade);
+      const exp = r2(r.base * rate * m) + r2(r.ot * rate * om);
+      otHours += r.ot;
+      if(Math.abs(exp - r.amt) > 0.05)
+        issues.push({ k, amt: r2(exp - r.amt), msg: `${NAMES[type]} ${r.base||r.ot}h at Grade ${r.grade}: paid ${money(r.amt,2)}, EBA says ${money(exp,2)} (${r.ot ? `extension ×${om}` : `×${m}, ${why}`})` });
+    }
+    if(!rs.some(r => r.allow === "CE"))
+      issues.push({ k, amt: st.ca, msg: `No shift allowance (C/ENGT AL ${money(st.ca,2)}) on this shift` });
+    if(autoMeal(type, k, hol, otHours) && !rs.some(r => r.allow === "ME"))
+      issues.push({ k, amt: st.meal, msg: `No meal allowance (${money(st.meal,2)}). It's paid on ${hol ? "holidays worked" : otHours ? "shifts with an extension" : "Sunday-rate shifts"}` });
+    // what you logged before the payslip arrived (only entries you made yourself)
+    const ex = prior[k];
+    if(ex && ex.src !== "slip" && ex.status === "worked" && ex.type === type){
+      const lg = Number(ex.grade) || 2, sh = ex.splitH || 0, sg = Number(ex.splitGrade) || lg;
+      const logged = (8 - sh) * hrx(st, lg) + sh * hrx(st, sg);
+      const paid = work.reduce((a,r) => a + r.base * hrx(st, r.grade || 2), 0);
+      if(logged - paid > 1){
+        const lbl = ex.job && JOB(ex.job) ? JOB(ex.job).name : (sh ? `${8-sh}h G${lg} + ${sh}h G${sg}` : `Grade ${lg}`);
+        const pg = work.filter(r => r.base > 0).map(r => `${r.base}h G${r.grade||"?"}`).join(" + ");
+        issues.push({ k, amt: r2((logged - paid) * m), msg: `You logged ${lbl}, but the payslip paid ${pg}. Check whether an upgrade was missed` });
+      }
+    }
+  }
+  // leave and holiday hours
+  const sickDays = Object.keys(lv).filter(k => lv[k] === "SIC").length, vspDays = Object.keys(lv).filter(k => lv[k] === "VSP").length;
+  if(slip.hrs){
+    if(sickDays*7 !== Math.round(slip.hrs.sick)) issues.push({ k: slip.from, msg: `Sick leave paid for ${slip.hrs.sick} hours, but ${sickDays} sick day${sickDays===1?"":"s"} listed (${sickDays*7} hours)` });
+    if(vspDays*7 !== Math.round(slip.hrs.vsp)) issues.push({ k: slip.from, msg: `VSE leave paid for ${slip.hrs.vsp} hours, but ${vspDays} RDO${vspDays===1?"":"s"} listed (${vspDays*7} hours)` });
+    let holsOff = 0;
+    for(let k=slip.from; k<=slip.to; k=add(k,1)){
+      if(!S.hols[k] || !S.settings.phUnworked) continue;
+      const workedIt = [add(k,-1), k, add(k,1)].some(d => (byDay[d]||[]).some(r => "DEN".includes(r.sh) && r.sh.length===1 && r.base > 0 && holDay(r.sh, d) === k));
+      if(!workedIt) holsOff++;
+    }
+    if(holsOff*8 !== Math.round(slip.hrs.ph)) issues.push({ k: slip.from, amt: r2((holsOff*8 - slip.hrs.ph) * hrx(step(slip.from),2)), msg: `Public holiday pay for ${slip.hrs.ph} hours, expected ${holsOff*8} (${holsOff} holiday${holsOff===1?"":"s"} not worked)` });
+  }
+  const short = r2(issues.reduce((a,i) => a + (i.amt > 0 ? i.amt : 0), 0));
+  return { checked, issues, short };
+}
+function slipToDays(slip){
+  const byDay = {};
+  for(const r of slip.rows){ (byDay[r.k] = byDay[r.k] || []).push(r); }
+  const lv = {};
+  for(const l of slip.leave){ for(let k=l.from; k<=l.to; k=add(k,1)) lv[k] = l.code; }
+  const days = [];
+  for(const k of Object.keys(byDay).sort()){
+    const rs = byDay[k], work = rs.filter(r => "DEN".includes(r.sh) && r.sh.length===1 && (r.base > 0 || r.ot > 0));
+    if(lv[k] === "SIC" || rs.some(r => /^(SIC|SICK|SL|PL|PCL|PER|PERS)$/.test(r.sh))){
+      days.push({ k, type:"S", label:"Sick (from payslip)" });
+    } else if(work.length){
+      const baseRows = work.filter(r => r.base > 0), otRows = work.filter(r => r.ot > 0);
+      const main = baseRows.find(r => r.allow==="CE") || baseRows[baseRows.length-1] || work[0];
+      const d = { k, type: main.sh, grade: main.grade || S.settings.grade, label: "" };
+      const others = baseRows.filter(r => r !== main && r.grade && r.grade !== d.grade);
+      if(others.length){ d.splitH = others.reduce((a,r) => a + r.base, 0); d.splitGrade = others[0].grade; }
+      const ot = otRows.reduce((a,r) => a + r.ot, 0);
+      if(ot){ d.ext = Math.min(4, Math.round(ot)); const og = otRows[0].grade; if(og && og !== d.grade) d.exGrade = og; }
+      d.meal = rs.some(r => r.allow === "ME");
+      d.label = `${NAMES[d.type]} · G${d.grade}` + (d.splitH ? ` (${d.splitH}h at G${d.splitGrade})` : "") + (d.ext ? ` · +${d.ext}h` : "") + (d.meal ? " · meal" : "");
+      days.push(d);
+    } else if(rs.some(r => r.sh === "RO")){
+      if(lv[k] === "VSP") days.push({ k, type:"L", label:"Self-funded RDO" });
+      else if(lv[k] === "ANN") days.push({ k, type:"A", label:"Annual leave" });
+      else days.push({ k, type:"O", label:"Rostered off" });
+    }
+  }
+  for(const k in lv){ if(!days.some(d => d.k === k)){
+    const c = lv[k]; if(c==="VSP") days.push({k, type:"L", label:"Self-funded RDO"}); else if(c==="SIC") days.push({k, type:"S", label:"Sick"}); else if(c==="ANN") days.push({k, type:"A", label:"Annual leave", ...(dow(k) >= 5 ? {nopay:true} : {})});
+  } }
+  return days.sort((a,b) => a.k < b.k ? -1 : 1);
+}
+$("slipFile").onchange = async e => {
+  const files = Array.from(e.target.files || []); e.target.value = "";
+  if(!files.length) return;
+  $("impList").innerHTML = ""; $("impBtns").hidden = true;
+  $("impStatus").textContent = `Reading ${files.length} payslip${files.length>1?"s":""} on your phone…`;
+  try {
+    const slips = [];
+    for(const f of files){ const sl = parsePayslip(await pdfText(f)); if(sl && sl.from) slips.push(sl); }
+    const uniq = {}; for(const sl of slips) uniq[sl.from] = sl;
+    const list = Object.values(uniq).sort((a,b) => a.from < b.from ? -1 : 1);
+    if(!list.length){ $("impStatus").textContent = "That doesn't look like a DP World payslip. Pick the PDF from your payslip email."; return; }
+    for(const sl of list) sl.check = checkPayslip(sl, S.shifts);
+    pendingSlips = list;
+    impRows = list.flatMap(slipToDays).map(d => ({ ...d, fromSlip:true }));
+    const per = list.map(sl => `${nice(sl.from)} – ${nice(sl.to)}`).join(", ");
+    const nIss = list.reduce((a,sl) => a + sl.check.issues.length, 0), short = r2(list.reduce((a,sl) => a + sl.check.short, 0));
+    showImpRows(`Read ${list.length} payslip${list.length>1?"s":""} (${per}): ${impRows.length} days. ` +
+      (nIss ? `Payslip check: ${nIss} thing${nIss>1?"s":""} to look at${short>0?`, possibly ${money(short,2)} short`:""}. Details on the Pay tab after you add. ` : `Payslip check: every shift matches the EBA. `) +
+      `Untick anything you don't want, then add.`);
+  } catch(err){
+    $("impStatus").textContent = "Couldn't open that PDF. Check you're online (the PDF reader loads the first time) and try again.";
+  }
+};
+let pendingSlips = [];
+function saveSlips(){
+  if(!pendingSlips.length) return;
+  S.payslips = S.payslips || {};
+  for(const sl of pendingSlips){ // keep totals and shift facts only — no name, address, employee or bank details
+    S.payslips[sl.from] = { from:sl.from, to:sl.to, payDate:sl.payDate, gross:sl.gross, tax:sl.tax, net:sl.net, bonus:sl.bonus, vsePaid:sl.vsePaid, meal:sl.meal, super:sl.super, ytdGross:sl.ytdGross, ytdTaxable:sl.ytdTaxable,
+      bal: sl.bal, check: sl.check, bank:sl.bank||0, otherDed: Math.max(0, r2((sl.totalDedn||0) - (sl.vsePaid||0) - (sl.bank||0))) };
+  }
+  pendingSlips = [];
+}
+
+/* ============ START ============ */
+renderSetup();
+syncFill();
+connect();
+renderInstall();
+if("serviceWorker" in navigator && !inClaude() && location.protocol === "https:"){
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+setupImport();
+</script>
+</body>
+</html>
