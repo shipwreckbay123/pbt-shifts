@@ -97,9 +97,13 @@ h3{font:600 16px/1.2 var(--display);letter-spacing:.03em;text-transform:uppercas
 .cell{position:relative;aspect-ratio:1/1.12;border-radius:9px;border:1px solid var(--line);background:var(--surface);padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;min-width:0}
 .cell.out{opacity:.38}
 .cell.today{border:2px solid var(--accent)}
-.cell .d{font-size:12px;align-self:flex-start;line-height:1}
-.cell .chip{width:100%;border-radius:6px;text-align:center;font:700 15px/1.6 var(--display)}
-.cell .hol{position:absolute;top:16px;left:3px;line-height:0}
+.cell .hd{display:flex;flex-direction:column;align-items:stretch;gap:2px;width:100%;min-width:0}
+.cell .dl{display:flex;align-items:center;gap:3px;min-height:15px}
+.cell .sub{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px;min-width:0}
+.cell .sub .ext{margin-left:auto}
+.cell .d{font-size:12px;line-height:1}
+.cell .chip{width:100%;border-radius:6px;text-align:center;font:700 15px/1.45 var(--display);margin-top:2px}
+.cell .hol{line-height:0}
 .hb{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;color:#fff;vertical-align:-3px;flex:none}
 .hb svg{width:10px;height:10px}
 .hb-PH{background:var(--ph)}.hb-CPD{background:var(--cpd)}
@@ -108,11 +112,11 @@ h3{font:600 16px/1.2 var(--display);letter-spacing:.03em;text-transform:uppercas
 .cell.sch{background:var(--sch)}
 .cell.sch::after{content:"";position:absolute;left:3px;right:3px;bottom:2px;height:3px;border-radius:2px;background:var(--sch-line)}
 .mini .c.sch{box-shadow:inset 0 -3px 0 var(--sch-line)}
-.cell .pn{position:absolute;top:4px;right:4px;font:600 9px/1 var(--body);letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
+.cell .pn{font:600 9px/1 var(--body);letter-spacing:.02em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
 .cell.pw-D{border-top:3px solid var(--day)}.cell.pw-E{border-top:3px solid var(--eve)}
 .cell.pw-N{border-top:3px solid var(--night)}.cell.pw-I{border-top:3px solid var(--irr)}
 .cell.today{border-top-width:2px}
-.cell .ext{position:absolute;bottom:22px;right:3px;font-size:9px;font-weight:600;color:var(--muted)}
+.cell .ext{font-size:9px;line-height:1;font-weight:600;color:var(--muted);white-space:nowrap}
 .chip.D{background:var(--day);color:var(--day-ink)}
 .chip.E{background:var(--eve);color:var(--eve-ink)}
 .chip.N{background:var(--night);color:var(--night-ink)}
@@ -992,8 +996,7 @@ function cellHTML(k, today){
   const inMonth = k.slice(0,7) === curMonth;
   const sh = S.shifts[k], hol = S.hols[k], pn = panelFor(k), sc = schoolHol(k);
   return `<button class="cell${inMonth?"":" out"}${k===today?" today":""}${pn?" pw-"+pn:""}${sc?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sc?", school holidays":""}${pn?", panel "+NAMES[pn]:""}${sh?", "+NAMES[sh.type]+(sh.status==="worked"?" worked":" planned"):""}${hol?", "+holName(hol):""}">
-      <span class="d">${D(k).getUTCDate()}</span>${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:""}${hol?`<span class="hol">${holBadge(hol)}</span>`:""}
-      ${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}
+      <span class="hd"><span class="dl"><span class="d">${D(k).getUTCDate()}</span>${hol?`<span class="hol">${holBadge(hol)}</span>`:""}</span>${pn||(sh&&sh.ext)?`<span class="sub">${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:"<span></span>"}${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}</span>`:""}</span>
       ${chipHTML(sh) || '<div class="chip" style="visibility:hidden">·</div>'}
     </button>`;
 }
