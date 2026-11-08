@@ -954,10 +954,12 @@ let sheetDay = null, draft = null;
 const $ = id => document.getElementById(id);
 function toast(t){ const el=$("toast"); const msg=[t, ruleMsg].filter(Boolean).join(" · "); const long=!!ruleMsg; ruleMsg=""; if(!msg) return; el.textContent=msg; el.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("on"), long?4500:1800); }
 
-function chipHTML(sh){
+// "6 and out": the day after six shifts in a row (sick days count) is a forced day off.
+function sixOut(k){ for(let i = 1; i <= 6; i++) if(!isWorkDay(S.shifts[add(k,-i)])) return false; return true; }
+function chipHTML(sh, k){
+  if((!sh || sh.type==="O") && k && sixOut(k)) return `<div class="chip O six">6 &amp;<br>OUT</div>`;
   if(!sh) return "";
   const plan = sh.status!=="worked" && sh.type!=="O" ? " plan" : "";
-  if(sh.type==="O" && sh.auto==="six") return `<div class="chip O six">6 &amp;<br>OUT</div>`;
   const letter = sh.type==="O" ? "–" : LETTER(sh.type);
   return `<div class="chip ${sh.type}${plan}">${letter}</div>`;
 }
@@ -1000,7 +1002,7 @@ function cellHTML(k, today){
   const sh = S.shifts[k], hol = S.hols[k], pn = panelFor(k), sc = schoolHol(k);
   return `<button class="cell${inMonth?"":" out"}${k===today?" today":""}${pn?" pw-"+pn:""}${sc?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sc?", school holidays":""}${pn?", panel "+NAMES[pn]:""}${sh?", "+NAMES[sh.type]+(sh.status==="worked"?" worked":" planned"):""}${hol?", "+holName(hol):""}">
       <span class="hd"><span class="dl"><span class="d">${D(k).getUTCDate()}</span>${hol?`<span class="hol">${holBadge(hol)}</span>`:""}</span>${pn||(sh&&sh.ext)?`<span class="sub">${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:"<span></span>"}${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}</span>`:""}</span>
-      ${chipHTML(sh) || '<div class="chip" style="visibility:hidden">·</div>'}
+      ${chipHTML(sh, k) || '<div class="chip" style="visibility:hidden">·</div>'}
     </button>`;
 }
 // Month view grouped by pay fortnight: each fortnight gets a coloured frame and its pay date.
@@ -1029,10 +1031,10 @@ function renderWeek(){
   let html = "";
   for(let i=0;i<7;i++){
     const k = add(mon,i), sh = S.shifts[k], c = calcShift(k, sh), hol = S.hols[k];
-    const tag = sh ? `<div class="tag chip ${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}">${sh.type==="O"?"–":LETTER(sh.type)}</div>` : `<div class="tag chip O">·</div>`;
+    const tag = (!sh || sh.type==="O") && sixOut(k) ? `<div class="tag chip O six">6 &amp;<br>OUT</div>` : sh ? `<div class="tag chip ${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}">${sh.type==="O"?"–":LETTER(sh.type)}</div>` : `<div class="tag chip O">·</div>`;
     const pn = panelFor(k);
     const scH = schoolHol(k);
-    const sub = (sh && sh.job && JOB(sh.job) ? JOB(sh.job).name + " · " : "") + (sh ? (TIMES[sh.type] ? timesFor(k, sh.type) : sh.type==="X" ? "Scratched: " + (sh.scr||"D").split("").map(c=>NAMES[c].toLowerCase()).join(", ") : sh.type==="O" && sh.auto==="six" ? "6 and out (worked 6 in a row)" : NAMES[sh.type]) + (sh.ext?` · +${sh.ext}h`:"") : "Nothing entered") + (pn ? ` · panel ${NAMES[pn].toLowerCase()}` : "") + (scH ? " · school hols" : "");
+    const sub = (sh && sh.job && JOB(sh.job) ? JOB(sh.job).name + " · " : "") + (sh ? (TIMES[sh.type] ? timesFor(k, sh.type) : sh.type==="X" ? "Scratched: " + (sh.scr||"D").split("").map(c=>NAMES[c].toLowerCase()).join(", ") : sh.type==="O" && sixOut(k) ? "6 and out (worked 6 in a row)" : NAMES[sh.type]) + (sh.ext?` · +${sh.ext}h`:"") : sixOut(k) ? "6 and out (worked 6 in a row)" : "Nothing entered") + (pn ? ` · panel ${NAMES[pn].toLowerCase()}` : "") + (scH ? " · school hols" : "");
     html += `<button class="li" data-k="${k}" style="background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%">
       ${tag}<div><div class="t">${nice(k)}${hol?` <span class="status hs-${hol}">${holBadge(hol)}${hol}</span>`:""}</div><div class="s">${esc(sub)}${sh&&sh.note?" · "+esc(sh.note):""}</div></div>
       <div class="amt num">${c?money(c.gross):""}${sh&&"DEN".includes(sh.type)?`<div><span class="status${sh.status==="worked"?" w":""}">${sh.status==="worked"?"Worked":"Planned"}</span></div>`:""}</div>
