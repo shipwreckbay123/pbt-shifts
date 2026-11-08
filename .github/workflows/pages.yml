@@ -9,6 +9,7 @@ on:
       - "manifest.webmanifest"
       - "sw.js"
       - "icons/**"
+      - "ocr/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 permissions:
@@ -25,7 +26,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/site"
           cp index.html manifest.webmanifest sw.js "$RUNNER_TEMP/site/"
-          cp -r icons "$RUNNER_TEMP/site/"
+          cp -r icons ocr "$RUNNER_TEMP/site/"
           touch "$RUNNER_TEMP/site/.nojekyll"
           git fetch origin gh-pages --depth 1 || true
           git config user.name "github-actions[bot]"

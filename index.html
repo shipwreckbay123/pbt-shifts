@@ -1694,10 +1694,10 @@ $("bkRestore").onclick = () => {
 };
 
 /* ============ MICROSTER SCREENSHOT IMPORT ============ */
-let sampleFn = null, impMax = 4, impRows = [];
+let sampleFn = null, impMax = 4, impRows = [], ocrMode = false;
 async function setupImport(){
   try {
-    if(!window.claude || typeof window.claude.use !== "function") return;
+    if(!window.claude || typeof window.claude.use !== "function"){ ocrMode = true; $("impStatus").textContent = "In Microster, open Unavailability and screenshot a whole month (zoom out so Sunday to Saturday all show). Then pick it here. It's read on your phone. The first time, it downloads the reader (about 7 MB)."; return; }
     const s = await window.claude.use("sample");
     if(!s){ impNote("Reading screenshots only works when this page is opened from your Claude account."); return; }
     const lim = await s.limits().catch(()=>null);
@@ -1729,21 +1729,19 @@ Reply with only a JSON array, one object per day that shows a shift or a code:
 [{"date":"YYYY-MM-DD","code":"D"|"E"|"N"|"RDO"|"SICK"|"ANNUAL"|"SCRATCH"|"LEAVE"|"OTHER","extra_hours":0,"scratched":"","label":"what the cell says, e.g. E 1400-2200 (8)"}]
 If you cannot read the month and year, reply [].`;
 $("impPick").addEventListener("click", () => {
-  $("impStatus").textContent = "Pick your Microster screenshot. If nothing opens, open this page in Chrome instead (⋮ menu → Open in browser) and try again.";
+  $("impStatus").textContent = ocrMode ? "Pick your Microster screenshot (you can pick a few)." : "Pick your Microster screenshot. If nothing opens, open this page in Chrome instead (⋮ menu → Open in browser) and try again.";
 });
 $("impFile").onchange = async e => {
   const files = Array.from(e.target.files || []).slice(0, impMax);
   e.target.value = "";
   if(!files.length) { $("impStatus").textContent = "No picture picked."; return; }
+  if(!sampleFn && ocrMode) return ocrImport(files);
   if(!sampleFn){ $("impStatus").textContent = "Claude can't read pictures in this view. Open the page in Chrome while signed in to Claude."; return; }
   $("impList").innerHTML = ""; $("impBtns").hidden = true; $("impPick").setAttribute("aria-disabled","true");
   $("impStatus").textContent = `Reading ${files.length} screenshot${files.length>1?"s":""}… this can take up to a minute.`;
   try {
     const data = await sampleFn.json(IMPORT_PROMPT, { images: files });
-    const map = {D:"D",E:"E",N:"N",RDO:"L",LEAVE:"L",SICK:"S",ANNUAL:"A",SCRATCH:"X"};
-    impRows = (Array.isArray(data) ? data : []).filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)))
-      .map(r => { const scr = String(r.scratched||"").toUpperCase().replace(/[^DEN]/g,""); return { k:String(r.date), type: map[String(r.code).toUpperCase()] || "", ext: Math.max(0, Math.min(4, Math.round(Number(r.extra_hours)||0))), ...(scr ? {scr: "DEN".split("").filter(c => scr.includes(c)).join("")} : {}), label: String(r.label||r.code||"").slice(0,48) }; })
-      .sort((a,b) => a.k < b.k ? -1 : 1);
+    impRows = impFromData(data);
     if(!impRows.length){ $("impStatus").textContent = "I couldn't find any shifts in that picture. Try a screenshot that shows the month name at the top."; return; }
     showImpRows(`Found ${impRows.length} day${impRows.length>1?"s":""}. Untick anything that's wrong, then add. Grades aren't shown in Microster, so these use your usual grade. Change any you worked at a higher grade.`);
   } catch(err){
@@ -1755,6 +1753,285 @@ $("impFile").onchange = async e => {
       "Something went wrong reading the screenshot. Try again.";
   } finally { $("impPick").removeAttribute("aria-disabled"); }
 };
+function impFromData(data){
+  const map = {D:"D",E:"E",N:"N",RDO:"L",LEAVE:"L",SICK:"S",ANNUAL:"A",SCRATCH:"X"};
+  return (Array.isArray(data) ? data : []).filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(String(r.date)))
+    .map(r => { const scr = String(r.scratched||"").toUpperCase().replace(/[^DEN]/g,""); return { k:String(r.date), type: map[String(r.code).toUpperCase()] || "", ext: Math.max(0, Math.min(4, Math.round(Number(r.extra_hours)||0))), ...(scr ? {scr: "DEN".split("").filter(c => scr.includes(c)).join("")} : {}), label: String(r.label||r.code||"").slice(0,48) }; })
+    .sort((a,b) => a.k < b.k ? -1 : 1);
+}
+/* ============ ON-PHONE SCREENSHOT READING (no Claude login needed) ============ */
+// Reads a Microster "Unavailability" / "My Roster" month screenshot on the phone (Tesseract).
+// 1. Finds the calendar boxes from the picture's colours (grey box, light date strip on top).
+// 2. Reads the month name, weekday headings and shift text once, from the calendar area.
+// 3. Reads a few date numbers to line the boxes up with dates, and reads light-blue scratch bars.
+// img = {w, h, data: RGBA}. ocr(img, {psm, chars}) => Promise<{text, words:[{text,x0,y0,x1,y1}]}>
+const OCR_MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+const OCR_DOW = ["sun","mon","tue","wed","thu","fri","sat"];
+function ocrLum(img, x, y){ const i = (y*img.w + x)*4, d = img.data; return 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]; }
+function ocrCls(l){ return l < 120 ? "D" : l > 225 ? "L" : (l >= 165 && l <= 215) ? "G" : "M"; }
+function ocrRuns(get, n){ const runs = []; let prev = null, start = 0; for(let i = 0; i < n; i++){ const c = get(i); if(c !== prev){ if(prev !== null) runs.push({ c: prev, s: start, n: i - start }); prev = c; start = i; } } runs.push({ c: prev, s: start, n: n - start }); return runs; }
+function ocrIsBlue(img, x, y){ const i = (y*img.w + x)*4, d = img.data; return d[i+2] > 225 && d[i] < 185 && d[i+1] > 190 && d[i+2] - d[i] > 60; }
+// The grey calendar boxes: [{x0, x1, sy0, sy1, by0, by1}] (strip = date strip, body = grey part)
+function ocrFindCells(img){
+  const minW = img.w / 16, maxW = img.w / 5;
+  const cols = [];
+  for(let y = 0; y < img.h; y += 3){
+    const runs = ocrRuns(x => ocrCls(ocrLum(img, x, y)), img.w);
+    for(let i = 1; i < runs.length - 1; i++){
+      const r = runs[i];
+      if(r.c !== "G" || r.n < minW || r.n > maxW) continue;
+      const left = runs.slice(Math.max(0, i-2), i).some(q => q.c === "D"), right = runs.slice(i+1, i+3).some(q => q.c === "D");
+      if(!left || !right) continue;
+      const hit = cols.find(c => Math.abs(c.x0 - r.s) < 8 && Math.abs(c.x1 - (r.s + r.n)) < 8);
+      if(hit) hit.k++; else cols.push({ x0: r.s, x1: r.s + r.n, k: 1 });
+    }
+  }
+  const best = cols.filter(c => c.k >= 12).sort((a,b) => a.x0 - b.x0);
+  const columns = [];
+  for(const c of best){ const o = columns.find(q => c.x0 < q.x1 && c.x1 > q.x0); if(!o) columns.push(c); else if(c.k > o.k) Object.assign(o, c); }
+  const cells = [];
+  for(const c of columns){
+    const x = Math.round(c.x0 + 0.1*(c.x1 - c.x0));
+    const runs = ocrRuns(y => ocrCls(ocrLum(img, x, y)), img.h);
+    for(let i = 1; i < runs.length - 1; i++){
+      const r = runs[i];
+      if(r.c !== "L" || r.n < 10 || r.n > 60) continue;
+      if(!runs.slice(Math.max(0, i-2), i).some(q => q.c === "D" && q.n <= 4)) continue;
+      // after the strip: a thin border, then a tall grey body
+      let j = i + 1, gap = 0;
+      while(j < runs.length && !(runs[j].c === "G" && runs[j].n >= 6)){ gap += runs[j].n; j++; if(gap > 6) break; }
+      if(gap > 6 || j >= runs.length) continue;
+      // the body runs on (through any scratch bar) until a border with the light gap below it
+      let k = j;
+      while(k + 1 < runs.length && runs[k+1].c !== "L" && !(runs[k+1].c === "D" && k + 2 < runs.length && runs[k+2].c === "L")) k++;
+      const by0 = runs[j].s, by1 = runs[k].s + runs[k].n;
+      if(by1 - by0 < 2*r.n) continue;
+      cells.push({ x0: c.x0, x1: c.x1, sy0: r.s, sy1: r.s + r.n, by0, by1 });
+    }
+  }
+  return cells;
+}
+// Copy part of the picture, scaled up and turned black and white (Tesseract reads that best)
+function ocrCrop(img, x0, y0, x1, y1, scale, thr){
+  x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(img.w, Math.ceil(x1)); y1 = Math.min(img.h, Math.ceil(y1));
+  const w = Math.max(1, Math.round((x1-x0)*scale)), h = Math.max(1, Math.round((y1-y0)*scale)), out = new Uint8ClampedArray(w*h*4);
+  for(let y = 0; y < h; y++){
+    const sy = y0 + (y+0.5)/scale - 0.5, ya = Math.max(y0, Math.min(y1-1, Math.floor(sy))), yb = Math.min(y1-1, ya+1), fy = Math.max(0, Math.min(1, sy - ya));
+    for(let x = 0; x < w; x++){
+      const sx = x0 + (x+0.5)/scale - 0.5, xa = Math.max(x0, Math.min(x1-1, Math.floor(sx))), xb = Math.min(x1-1, xa+1), fx = Math.max(0, Math.min(1, sx - xa));
+      const l = (ocrLum(img,xa,ya)*(1-fx) + ocrLum(img,xb,ya)*fx)*(1-fy) + (ocrLum(img,xa,yb)*(1-fx) + ocrLum(img,xb,yb)*fx)*fy;
+      const v = thr ? (l > thr ? 255 : 0) : l, i = (y*w + x)*4;
+      out[i] = out[i+1] = out[i+2] = v; out[i+3] = 255;
+    }
+  }
+  return { w, h, data: out, x0, y0, scale };
+}
+async function ocrReadMicroster(img, ocr){
+  const cells = ocrFindCells(img);
+  if(cells.length < 5) return { rows: [], why: "grid" };
+  // rows of boxes
+  const tops = [...new Set(cells.map(c => c.sy0))].sort((a,b) => a-b), rowTops = [];
+  for(const t of tops){ if(!rowTops.length || t - rowTops[rowTops.length-1] > 10) rowTops.push(t); }
+  const pitch = rowTops.length > 1 ? (rowTops[rowTops.length-1] - rowTops[0]) / (rowTops.length - 1) : (cells[0].by1 - cells[0].sy0) * 1.1;
+  for(const c of cells) c.r = rowTops.findIndex(t => Math.abs(t - c.sy0) <= 10);
+  const gx0 = Math.min(...cells.map(c => c.x0)), gx1 = Math.max(...cells.map(c => c.x1));
+  const gy0 = Math.max(0, rowTops[0] - 2.6*pitch), gy1 = Math.max(...cells.map(c => c.by1));
+  // one read of the whole calendar: month name, weekday headings and the shift text
+  const SC = 2.5;
+  const big = ocrCrop(img, 0, gy0, img.w, gy1, SC, 160);
+  const all = await ocr(big, { psm: 3 });
+  const words = all.words.map(w => ({ text: w.text, x0: w.x0/SC, x1: w.x1/SC, y0: gy0 + w.y0/SC, y1: gy0 + w.y1/SC }));
+  // weekday of each column, from the headings (fallback: leftmost box = Sunday)
+  const heads = [];
+  for(const w of words){ const t = w.text.toLowerCase().replace(/[^a-z]/g,""); const i = OCR_DOW.indexOf(t.slice(0,3)); if(i >= 0 && t.length >= 3 && t.length <= 9 && w.y1 < rowTops[0]) heads.push({ i, x: (w.x0+w.x1)/2 }); }
+  // boxes sit in side-by-side columns; the headings only tell us which weekday the first column is
+  const colXs = [];
+  for(const x of [...new Set(cells.map(c => (c.x0 + c.x1)/2))].sort((a,b) => a-b)) if(!colXs.length || x - colXs[colXs.length-1] > 10) colXs.push(x);
+  const colIdx = x => { let b = 0; for(let i = 1; i < colXs.length; i++) if(Math.abs(colXs[i] - x) < Math.abs(colXs[b] - x)) b = i; return b; };
+  let off = 0;
+  if(heads.length >= 3){ const votes = {}; for(const h of heads){ const o = h.i - colIdx(h.x); votes[o] = (votes[o]||0) + 1; } off = Number(Object.entries(votes).sort((a,b) => b[1]-a[1])[0][0]); }
+  for(const c of cells) c.c = colIdx((c.x0 + c.x1)/2) + off;
+  // date numbers: read a few strips until they agree on how rows line up with dates
+  const ks = {}; let tries = 0, kBest = null;
+  const order = cells.slice().sort((a,b) => (b.r - a.r) || (a.c - b.c));   // later rows first: no greyed days there
+  for(const c of order){
+    if(tries >= 14) break;
+    tries++;
+    const crop = ocrCrop(img, c.x0 + (c.x1-c.x0)*0.45, c.sy0 + 1, c.x1 - 1, c.sy1 - 1, 4, 140);
+    const r = await ocr(crop, { psm: 7, chars: "0123456789" });
+    const d = parseInt(String(r.text).replace(/\D/g, ""), 10);
+    if(!(d >= 1 && d <= 31)) continue;
+    const k = d - (7*c.r + c.c);
+    ks[k] = (ks[k] || 0) + 1;
+    const top = Object.entries(ks).sort((a,b) => b[1] - a[1])[0];
+    if(top[1] >= 3 && top[1] >= 2*((Object.values(ks).reduce((s,n)=>s+n,0)) - top[1])){ kBest = Number(top[0]); break; }
+  }
+  if(kBest === null){ const top = Object.entries(ks).sort((a,b) => b[1] - a[1])[0]; if(top && top[1] >= 2) kBest = Number(top[0]); }
+  if(kBest === null) return { rows: [], why: "dates" };
+  // which month: the "Month Year" on screen whose first day lines up with the boxes
+  const text = all.text.toLowerCase();
+  const cands = [];
+  for(const m of text.matchAll(new RegExp("(" + OCR_MONTHS.join("|") + ")\\s+(20\\d\\d)", "g"))) cands.push({ y: Number(m[2]), m: OCR_MONTHS.indexOf(m[1]) + 1 });
+  let mon = null;
+  for(const cd of cands){
+    const f = new Date(Date.UTC(cd.y, cd.m - 1, 1)).getUTCDay();
+    if((((1 - f - kBest) % 7) + 7) % 7 === 0 && kBest + 7 > 1 - f - 7*6){ mon = cd; break; }
+  }
+  if(!mon) return { rows: [], why: "month" };
+  const dim = new Date(Date.UTC(mon.y, mon.m, 0)).getUTCDate();
+  const pad2 = n => String(n).padStart(2, "0");
+  const out = [], todo = [];
+  for(const c of cells.sort((a,b) => (a.r - b.r) || (a.c - b.c))){
+    const d = 7*c.r + c.c + kBest;
+    if(d < 1 || d > dim) continue;
+    c.d = d;
+    // scratch bar?
+    const blueRows = [];
+    for(let y = c.by0; y < c.by1; y++){ let n = 0; for(let x = c.x0; x < c.x1; x += 2) if(ocrIsBlue(img, x, y)) n++; if(n > (c.x1 - c.x0)/4) blueRows.push(y); }
+    if(blueRows.length >= 4){
+      const y0 = blueRows[0], y1 = blueRows[blueRows.length-1] + 1;
+      const r = await ocr(ocrCrop(img, c.x0 + 2, y0, c.x1 - 2, y1, 4, 120), { psm: 7, chars: "DEN" });
+      const letters = String(r.text).toUpperCase().replace(/[^DEN]/g, "") || "DEN";
+      out.push({ date: `${mon.y}-${pad2(mon.m)}-${pad2(d)}`, code: "SCRATCH", extra_hours: 0, scratched: "DEN".split("").filter(x => letters.includes(x)).join(""), label: "Scratch " + letters });
+      continue;
+    }
+    // is there any writing in the box?
+    let ink = 0;
+    for(let y = c.by0 + 3; y < c.by1 - 3; y += 2) for(let x = c.x0 + 4; x < c.x1 - 4; x += 2) if(ocrLum(img, x, y) < 110) ink++;
+    if(ink >= 6) todo.push(c);
+  }
+  // read every box with writing in one go: stack the boxes (without their borders) on a white sheet
+  if(todo.length){
+    const S2 = 3, GAP = 40, crops = todo.map(c => ocrCrop(img, c.x0 + 4, c.by0 + 3, c.x1 - 4, c.by1 - 3, S2, 150));
+    const W2 = Math.max(...crops.map(q => q.w)) + 40, H2 = crops.reduce((s,q) => s + q.h + GAP, GAP);
+    const sheet = { w: W2, h: H2, data: new Uint8ClampedArray(W2*H2*4).fill(255) };
+    let y = GAP; const bands = [];
+    for(const q of crops){
+      for(let yy = 0; yy < q.h; yy++) sheet.data.set(q.data.subarray(yy*q.w*4, (yy+1)*q.w*4), ((y+yy)*W2 + 20)*4);
+      bands.push([y, y + q.h]); y += q.h + GAP;
+    }
+    const r = await ocr(sheet, { psm: 6 });
+    todo.forEach((c, i) => {
+      const [b0, b1] = bands[i];
+      const ws = r.words.filter(w => { const m = (w.y0 + w.y1)/2; return m >= b0 - 8 && m <= b1 + 8; }).sort((a,b) => (Math.abs(a.y0-b.y0) < 10 ? a.x0-b.x0 : a.y0-b.y0));
+      const text = ws.map(w => w.text).join(" ").trim();
+      const res = text && ocrReadCell(text);
+      if(res) out.push({ date: `${mon.y}-${pad2(mon.m)}-${pad2(c.d)}`, ...res, label: text.slice(0, 40) });
+    });
+  }
+  out.sort((a,b) => a.date < b.date ? -1 : 1);
+  const cs = cells.map(c => c.c);
+  return { rows: out, month: mon, cols: Math.max(...cs) - Math.min(...cs) + 1 };
+}
+// Turn the text of one calendar box into a code
+function ocrReadCell(raw){
+  const fix = s => s.replace(/O/g,"0").replace(/[Il|]/g,"1").replace(/S/g,"5").replace(/B/g,"8");
+  let t = " " + String(raw).toUpperCase().replace(/[–—~_]/g, "-").replace(/(\w)\s*-\s*(\w)/g, "$1-$2")
+    .replace(/\b([0-9OIlSB|]{4})-([0-9OIlSB|]{4})\b/g, (m,a,b) => fix(a) + "-" + fix(b)) + " ";
+  if(/NOT\s*FINAL/.test(t)) return null;
+  const ranges = [...t.matchAll(/(\d{4})-(\d{4})(?:\s*\(?\s*(\d{1,2})\s*\)?)?/g)];
+  const CODE = /\b(OFF|0FF|RDO|ANNUAL|ANN|AL|LSL|SICK|SIC|SL|PCL|PL|SCR|SCRATCH|UNAVAIL\w*|DEN|DE|DN|EN|D|E|N)\b/g;
+  const toH = s => Number(s.slice(0,2)) + Number(s.slice(2))/60;
+  const span = (a,b) => { let h = toH(b) - toH(a); if(h <= 0) h += 24; return Math.round(h); };
+  const fromStart = s => { const h = toH(s); return h >= 5 && h < 8 ? "D" : h >= 12 && h < 16 ? "E" : h >= 20 && h < 23.5 ? "N" : ""; };
+  if(!ranges.length){
+    const codes = [...t.matchAll(CODE)].map(m => m[1]);
+    if(!codes.length) return null;
+    const c = codes[0];
+    if(/^(AL|ANN|ANNUAL)$/.test(c)) return { code:"ANNUAL", extra_hours:0, scratched:"" };
+    if(/^(SICK|SIC|SL|PL|PCL)$/.test(c)) return { code:"SICK", extra_hours:0, scratched:"" };
+    if(c === "LSL") return { code:"LEAVE", extra_hours:0, scratched:"" };
+    if(/^(SCR|SCRATCH|UNAVAIL)/.test(c)) return { code:"SCRATCH", extra_hours:0, scratched:"DEN" };
+    if(/^[DEN]{2,3}$/.test(c)) return { code:"SCRATCH", extra_hours:0, scratched: c };
+    return null; // "OFF" on its own, or a stray letter
+  }
+  const segs = ranges.map((m, i) => {
+    const before = t.slice(i ? ranges[i-1].index + ranges[i-1][0].length : 0, m.index);
+    const cs = [...before.matchAll(CODE)].map(x => x[1]);
+    const len = span(m[1], m[2]);
+    return { code: cs.length ? cs[cs.length-1] : "", start: m[1], end: m[2], hrs: len };
+  });
+  const s0 = segs[0];
+  let code = s0.code;
+  if(/^(AL|ANN|ANNUAL)$/.test(code)) return { code:"ANNUAL", extra_hours:0, scratched:"" };
+  if(/^(SICK|SIC|SL|PL|PCL)$/.test(code)) return { code:"SICK", extra_hours:0, scratched:"" };
+  if(code === "OFF" || code === "0FF" || code === "RDO") return { code:"RDO", extra_hours:0, scratched:"" };
+  if(!/^[DEN]$/.test(code)) code = fromStart(s0.start);
+  if(!code) return null;
+  if(s0.hrs === 7) return { code:"SICK", extra_hours:0, scratched:"" };
+  let extra = 0;
+  for(const s of segs.slice(1)) extra += s.hrs;
+  return { code, extra_hours: Math.min(4, extra), scratched:"" };
+}
+
+let ocrWorker = null;
+function loadScript(src){ return new Promise((ok, bad) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); }); }
+async function ocrGetWorker(onPct){
+  if(ocrWorker) return ocrWorker;
+  if(!window.Tesseract) await loadScript("ocr/tesseract.min.js");
+  ocrWorker = await Tesseract.createWorker("eng", 1, {
+    workerPath: new URL("ocr/worker.min.js", location.href).href,
+    corePath: new URL("ocr/", location.href).href,
+    langPath: new URL("ocr", location.href).href,
+    gzip: true,
+    logger: m => { if(m && typeof m.progress === "number" && onPct) onPct(m.status, m.progress); }
+  });
+  return ocrWorker;
+}
+function ocrLoadImage(file){
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(im, 0, 0); URL.revokeObjectURL(url);
+      const d = g.getImageData(0, 0, c.width, c.height); ok({ w: c.width, h: c.height, data: d.data });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); bad(new Error("image")); };
+    im.src = url;
+  });
+}
+function ocrWith(worker){
+  return async (im, o) => {
+    const c = document.createElement("canvas"); c.width = im.w; c.height = im.h;
+    c.getContext("2d").putImageData(new ImageData(im.data, im.w, im.h), 0, 0);
+    await worker.setParameters({ tessedit_pageseg_mode: String(o.psm || 3), tessedit_char_whitelist: o.chars || "" });
+    const { data } = await worker.recognize(c, {}, { blocks: true });
+    const words = [];
+    for(const b of data.blocks || []) for(const p of b.paragraphs || []) for(const l of p.lines || []) for(const w of l.words || [])
+      if(w.text && w.text.trim()) words.push({ text: w.text.trim(), x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 });
+    return { text: data.text || "", words };
+  };
+}
+async function ocrImport(files){
+  $("impList").innerHTML = ""; $("impBtns").hidden = true; $("impPick").setAttribute("aria-disabled","true");
+  const st = t => { $("impStatus").textContent = t; };
+  try {
+    st("Getting the reader ready…");
+    const worker = await ocrGetWorker((s, p) => { if(/load|init/i.test(s)) st(`Getting the reader ready… ${Math.round(p*100)}%`); });
+    const ocr = ocrWith(worker);
+    let all = [], fails = [], cut = false;
+    for(let i = 0; i < files.length; i++){
+      st(`Reading screenshot ${i+1} of ${files.length}… this takes about 10–30 seconds.`);
+      const img = await ocrLoadImage(files[i]);
+      const r = await ocrReadMicroster(img, ocr);
+      if(!r.rows.length) fails.push(r.why || "none");
+      if(r.cols && r.cols < 7) cut = true;
+      all = all.concat(r.rows);
+    }
+    impRows = impFromData(all);
+    if(!impRows.length){
+      const w = fails[0];
+      st(w === "grid" ? "I couldn't find the Microster calendar in that picture. Use the Unavailability page and get the whole month on screen." :
+         w === "month" ? "I couldn't read the month name at the top of the calendar. Make sure it's in the screenshot." :
+         w === "dates" ? "I couldn't read the date numbers. Try zooming in a little so the calendar fills the screen, then screenshot again." :
+         "I couldn't find any shifts in that picture.");
+      return;
+    }
+    showImpRows(`Found ${impRows.length} day${impRows.length>1?"s":""}${fails.length ? ` (${fails.length} screenshot${fails.length>1?"s":""} couldn't be read)` : ""}.${cut ? " Part of the calendar was cut off (the right-hand days), so zoom out and screenshot again for those." : ""} This was read on your phone, so check each one: untick anything that's wrong, then add. These use your usual grade. Change any you worked at a higher grade.`);
+  } catch(err){
+    st("Something went wrong reading the screenshot. The first time, you need internet to download the reader. Then try again.");
+  } finally { $("impPick").removeAttribute("aria-disabled"); }
+}
 function showImpRows(msg){
   $("impStatus").textContent = msg;
   $("impList").innerHTML = impRows.map((r,i) => {
