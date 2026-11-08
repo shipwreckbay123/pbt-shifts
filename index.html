@@ -232,6 +232,17 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--ac
 details.imp{padding:12px 14px}
 details.imp > summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
 details.imp .btn{min-height:40px;font-size:14px}
+.shipHead{font:700 13px/1 var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.ship{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.ship:last-child{border-bottom:0}
+.ship .st{flex:none;width:58px;text-align:center;font:700 18px/1.05 var(--display)}
+.ship .st small{display:block;font:600 11px/1.2 var(--body);color:var(--muted);text-transform:uppercase}
+.ship .sv{flex:1;min-width:0}
+.ship .sv b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ship .bb{flex:none;font:700 12px/1 var(--body);padding:5px 7px;border-radius:6px;background:var(--navy);color:#fff}
+.ship.mine{background:color-mix(in srgb, var(--good) 12%, transparent);border-radius:8px;padding-left:6px;padding-right:6px}
+.ship .mt{display:inline-block;margin-top:3px;font:700 11px/1 var(--body);padding:3px 6px;border-radius:99px;background:var(--good);color:#fff}
+.ship.past{opacity:.5}
 .eofy .big{font:700 34px/1.1 var(--display)}
 .eofy .bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px;position:relative}
 .eofy .bar i{display:block;height:100%;background:var(--good)}
@@ -309,6 +320,21 @@ details.imp .btn{min-height:40px;font-size:14px}
         </div>
       </details>
       <div class="btns" id="impBtns" hidden><button class="btn primary" id="impApply" type="button">Add to my calendar</button><button class="btn" id="impCancel" type="button">Cancel</button></div>
+      </div>
+    </details>
+
+    <details id="shipBox" class="card imp ships" style="margin-top:18px" open>
+      <summary>Ships at DP World · berths 10–12</summary>
+      <div class="stack" style="margin-top:10px">
+        <div class="small muted" id="shipUpd">Loading ship times…</div>
+        <div class="shipHead">Leaving</div>
+        <div class="list" id="shipOut"></div>
+        <details id="shipInBox">
+          <summary class="small" style="cursor:pointer;font-weight:600">Arriving</summary>
+          <div class="list" id="shipIn" style="margin-top:6px"></div>
+        </details>
+        <div class="btns"><button class="btn" id="shipRefresh" type="button">Refresh</button></div>
+        <div class="small muted">From the Port Authority of NSW <a href="https://www.portauthoritynsw.com.au/port-operations/port-botany/port-botany-daily-vessel-movements" target="_blank" rel="noopener">daily vessel movements</a>. Times change often. The list updates about every 15–30 minutes. "Your shift" means it's due to leave during a shift you've logged.</div>
       </div>
     </details>
   </section>
@@ -1369,6 +1395,62 @@ function renderYear(){
 }
 
 /* ---------- Setup ---------- */
+/* ============ SHIP MOVEMENTS (berths 10–12) ============ */
+// A GitHub Action copies the Port Authority's Port Botany movements every 15 minutes into vessels.json.
+const SHIPS_URL = "https://raw.githubusercontent.com/shipwreckbay123/pbt-shifts/data/vessels.json";
+const SHIFT_HRS = {D:[6,14], E:[14,22], N:[22,30]};
+let shipData = null, shipErr = "", shipAt = 0;
+try { shipData = JSON.parse(localStorage.getItem("pbt-ships") || "null"); } catch(e){}
+// Sydney wall-clock date and hour of an ISO time like 2026-11-09T10:15:00+11:00
+const shipParts = iso => { const m = String(iso||"").match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/); return m ? { k: m[1], h: +m[2] + m[3]/60, hm: m[2] + ":" + m[3] } : null; };
+// Is this time inside one of my logged shifts (today's, or last night's night shift)?
+function shipOnShift(iso){
+  const p = shipParts(iso); if(!p) return "";
+  for(const [k, h] of [[p.k, p.h], [add(p.k, -1), p.h + 24]]){
+    const sh = S.shifts[k]; if(!sh || !SHIFT_HRS[sh.type]) continue;
+    const [a, b] = SHIFT_HRS[sh.type];
+    if(h >= a && h < b + (sh.ext || 0)) return sh.type;
+  }
+  return "";
+}
+function shipRow(m, out){
+  const p = shipParts(m.time) || { k: "", hm: "?" };
+  const tk = todayKey(), day = p.k === tk ? "Today" : p.k === add(tk, 1) ? "Tmrw" : p.k ? D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" }) : "";
+  const mine = out ? shipOnShift(m.time) : "";
+  const past = Date.parse(m.time) < Date.now() - 30*60000;
+  const where = out ? (m.type === "Shift" ? `Moving to ${m.to}` : `To ${m.to}`) : (m.type === "Shift" ? `Moving from ${m.from}` : `From ${m.from}`);
+  return `<div class="ship${mine ? " mine" : ""}${past ? " past" : ""}"><div class="st">${esc(p.hm)}<small>${esc(day)}</small></div>
+    <div class="sv"><b>${esc(m.vessel)}</b><span class="small muted">${esc(where)}</span>${mine ? `<br><span class="mt">Your ${NAMES[mine].toLowerCase()} shift</span>` : ""}</div>
+    <span class="bb">B${esc(String(m.berth||"").replace(/\D/g,""))}</span></div>`;
+}
+function renderShips(){
+  const upd = document.getElementById("shipUpd"); if(!upd) return;
+  if(!shipData){ upd.textContent = shipErr || "Loading ship times…"; $("shipOut").innerHTML = ""; $("shipIn").innerHTML = ""; return; }
+  const ok = m => m && m.time && Date.parse(m.time) > Date.now() - 3*3600000 && Date.parse(m.time) < Date.now() + 4*86400000;
+  const BERTHS = new Set(shipData.berths || ["BD10","BD11","BD12"]);
+  const bOf = s => (String(s||"").match(/\((BD\d+)\)/) || [])[1] || "";
+  const moves = (shipData.moves || []).filter(ok);
+  const leaving = moves.filter(m => BERTHS.has(bOf(m.from)) && !BERTHS.has(bOf(m.to)));
+  const arriving = moves.filter(m => BERTHS.has(bOf(m.to)) && !BERTHS.has(bOf(m.from)));
+  const mins = Math.round((Date.now() - Date.parse(shipData.updated)) / 60000);
+  upd.textContent = (shipErr ? shipErr + " " : "") + `Updated ${mins < 1 ? "just now" : mins < 60 ? mins + " min ago" : Math.round(mins/60) + " h ago"}.`;
+  $("shipOut").innerHTML = leaving.length ? leaving.map(m => shipRow(m, true)).join("") : `<div class="small muted">No ships due to leave berths 10–12 in the next few days.</div>`;
+  $("shipIn").innerHTML = arriving.length ? arriving.map(m => shipRow(m, false)).join("") : `<div class="small muted">No ships due in.</div>`;
+}
+async function loadShips(force){
+  if(!force && Date.now() - shipAt < 5*60000) return renderShips();
+  shipAt = Date.now();
+  try {
+    const r = await fetch(SHIPS_URL + "?t=" + Math.floor(Date.now()/60000), { cache: "no-store" });
+    if(!r.ok) throw new Error(r.status);
+    shipData = await r.json(); shipErr = "";
+    try { localStorage.setItem("pbt-ships", JSON.stringify(shipData)); } catch(e){}
+  } catch(e){
+    shipErr = inClaude() ? "Ship times only show in the installed app." : "Couldn't get new ship times (no internet?).";
+  }
+  renderShips();
+}
+
 /* ============ HOLIDAY ICONS ============ */
 // Public holiday = red star, closed port day = blue anchor.
 const HOL_SVG = {PH:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.8l2.8 5.7 6.3.9-4.6 4.4 1.1 6.2L12 17.1 6.4 20l1.1-6.2-4.6-4.4 6.3-.9z"/></svg>', CPD:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.3"/><path d="M12 7.3V20.5M7.5 11h9M4 13.5c.6 4.3 4 7 8 7s7.4-2.7 8-7"/></svg>'};
@@ -1439,7 +1521,7 @@ function renderSetup(){
      <tr><td>VSE minimum salary / year</td><td class="r" colspan="2">${money(st.min,2)}</td></tr>`;
 }
 
-function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); }
+function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); renderShips(); }
 
 /* ============ DAY SHEET ============ */
 function openSheet(k){
@@ -2305,6 +2387,10 @@ renderSetup();
 syncFill();
 connect();
 renderInstall();
+loadShips(true);
+$("shipRefresh").onclick = () => loadShips(true);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) loadShips(false); });
+setInterval(() => { if(!document.hidden) loadShips(false); }, 10*60000);
 if("serviceWorker" in navigator && !inClaude() && location.protocol === "https:"){
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
