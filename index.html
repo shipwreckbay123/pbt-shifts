@@ -1697,7 +1697,7 @@ $("bkRestore").onclick = () => {
 let sampleFn = null, impMax = 4, impRows = [], ocrMode = false;
 async function setupImport(){
   try {
-    if(!window.claude || typeof window.claude.use !== "function"){ ocrMode = true; $("impStatus").textContent = "In Microster, open Unavailability and screenshot a whole month (zoom out so Sunday to Saturday all show). Then pick it here. It's read on your phone. The first time, it downloads the reader (about 7 MB)."; return; }
+    if(!window.claude || typeof window.claude.use !== "function"){ ocrMode = true; $("impStatus").textContent = "In Microster, open My Roster or Unavailability and screenshot a whole month (zoom out so Sunday to Saturday all show). Then pick it here. It's read on your phone. The first time, it downloads the reader (about 7 MB)."; return; }
     const s = await window.claude.use("sample");
     if(!s){ impNote("Reading screenshots only works when this page is opened from your Claude account."); return; }
     const lim = await s.limits().catch(()=>null);
@@ -1777,10 +1777,11 @@ function ocrFindCells(img){
   const cols = [];
   for(let y = 0; y < img.h; y += 3){
     const runs = ocrRuns(x => ocrCls(ocrLum(img, x, y)), img.w);
-    for(let i = 1; i < runs.length - 1; i++){
+    for(let i = 0; i < runs.length; i++){
       const r = runs[i];
       if(r.c !== "G" || r.n < minW || r.n > maxW) continue;
-      const left = runs.slice(Math.max(0, i-2), i).some(q => q.c === "D"), right = runs.slice(i+1, i+3).some(q => q.c === "D");
+      // a box cut off at the left or right edge of the screenshot still counts
+      const left = r.s === 0 || runs.slice(Math.max(0, i-2), i).some(q => q.c === "D"), right = r.s + r.n >= img.w || runs.slice(i+1, i+3).some(q => q.c === "D");
       if(!left || !right) continue;
       const hit = cols.find(c => Math.abs(c.x0 - r.s) < 8 && Math.abs(c.x1 - (r.s + r.n)) < 8);
       if(hit) hit.k++; else cols.push({ x0: r.s, x1: r.s + r.n, k: 1 });
@@ -2021,7 +2022,7 @@ async function ocrImport(files){
     impRows = impFromData(all);
     if(!impRows.length){
       const w = fails[0];
-      st(w === "grid" ? "I couldn't find the Microster calendar in that picture. Use the Unavailability page and get the whole month on screen." :
+      st(w === "grid" ? "I couldn't find the Microster calendar in that picture. Use the My Roster or Unavailability page and get the whole month on screen." :
          w === "month" ? "I couldn't read the month name at the top of the calendar. Make sure it's in the screenshot." :
          w === "dates" ? "I couldn't read the date numbers. Try zooming in a little so the calendar fills the screen, then screenshot again." :
          "I couldn't find any shifts in that picture.");
