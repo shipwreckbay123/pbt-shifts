@@ -1,0 +1,32 @@
+# Every 15 minutes: fetch Port Botany ship movements for DP World's berths (BD10-12)
+# from the Port Authority of NSW website and save them as vessels.json on the "data" branch.
+# The app reads https://raw.githubusercontent.com/shipwreckbay123/pbt-shifts/data/vessels.json
+name: Ship movements
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vessels
+  cancel-in-progress: false
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch movements
+        run: python3 scripts/vessels.py "$RUNNER_TEMP/vessels.json"
+      - name: Save to the data branch
+        run: |
+          cd "$RUNNER_TEMP"
+          mkdir data && cd data
+          git init -q -b data
+          cp ../vessels.json .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vessels.json
+          git commit -q -m "Ship movements $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
