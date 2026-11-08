@@ -207,6 +207,21 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .btn.danger{color:var(--ph)}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .btns .btn{flex:1}
+#panelPick{position:fixed;inset:0;z-index:60;background:rgba(5,15,25,.86);display:grid;place-items:center;padding:20px}
+#panelPick[hidden]{display:none}
+#panelPick .ppIn{background:var(--navy);color:#fff;border-radius:18px;padding:22px 18px;max-width:420px;width:100%;display:grid;gap:14px}
+#panelPick h2{margin:0;font:700 26px/1.1 var(--display);text-transform:uppercase;color:#fff}
+#panelPick .ppGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#panelPick .ppBtn{display:grid;gap:4px;text-align:left;padding:14px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#fff;min-height:96px}
+#panelPick .ppBtn.on,#panelPick .ppBtn:focus-visible{border-color:var(--accent)}
+#panelPick .ppN{font:700 24px/1 var(--display);color:var(--accent)}
+#panelPick .ppW{font-size:12.5px;opacity:.9}
+#panelPick .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.panelBtns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.panelBtns button{min-height:58px;border-radius:11px;border:1px solid var(--line);background:var(--surface);font-weight:700;display:grid;gap:2px;place-content:center}
+.panelBtns button small{font-weight:500;font-size:11px;color:var(--muted)}
+.panelBtns button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.panelBtns button[aria-pressed="true"] small{color:#dfe7ef}
 
 /* sheet */
 .scrim{position:fixed;inset:0;background:rgba(5,12,20,.55);display:none;z-index:20}
@@ -471,14 +486,20 @@ details.imp .btn{min-height:40px;font-size:14px}
 
     <h2>Panel cycle</h2>
     <div class="card stack">
-      <div class="small muted">Shows your panel week in small letters on each calendar day, with a coloured strip across the top. Worked out from your payslips: blocks run Tuesday to Monday in the order nights, evenings, irregular, days.</div>
+      <div class="small muted">Your panel week shows in small letters on each calendar day, with a coloured strip across the top. Weeks run Tuesday to Monday: nights, evenings, irregular, days. Panel 4 follows panel 1, 1 follows 2, 2 follows 3, 3 follows 4.</div>
+      <div class="field"><label>My panel</label><div class="panelBtns" id="panelBtns"></div></div>
       <label class="check"><input type="checkbox" id="setShowPanel"> Show panel on the calendar</label>
       <label class="check"><input type="checkbox" id="setShowSchool"> Show NSW public school holidays (Eastern division, 2026–27)</label>
-      <div class="field"><label for="setPanelStart">First day of a week in the cycle (a Tuesday)</label><input type="date" id="setPanelStart"></div>
-      <div class="field"><label for="setPanelCycle">Order of weeks, starting from that day</label>
-        <input type="text" id="setPanelCycle" autocomplete="off" spellcheck="false" placeholder="NEID">
-        <div class="small muted">N nights, E evenings, I irregular, D days. NEID = nights, evenings, irregular, days, then repeat.</div>
-      </div>
+      <details>
+        <summary class="small" style="cursor:pointer;font-weight:600">Set the cycle by hand</summary>
+        <div class="stack" style="margin-top:8px">
+          <div class="field"><label for="setPanelStart">First day of a week in the cycle (a Tuesday)</label><input type="date" id="setPanelStart"></div>
+          <div class="field"><label for="setPanelCycle">Order of weeks, starting from that day</label>
+            <input type="text" id="setPanelCycle" autocomplete="off" spellcheck="false" placeholder="NEID">
+            <div class="small muted">N nights, E evenings, I irregular, D days. NEID = nights, evenings, irregular, days, then repeat.</div>
+          </div>
+        </div>
+      </details>
     </div>
 
     <h2>Payslip extras</h2>
@@ -641,6 +662,39 @@ function panelFor(k){
   const n = Math.floor(diffDays(st.panelStart, k)/7);
   return cyc[((n % cyc.length) + cyc.length) % cyc.length];
 }
+// The four VSE panels run the same cycle a week apart. Panel 4 does next week what panel 1 does this week;
+// panel 1 follows panel 2, panel 2 follows panel 3, panel 3 follows panel 4. Weeks change over on Tuesdays.
+// Panel 4 started a nights week on Tue 27 Oct 2026.
+const PANEL_BASE = "2026-10-27", PANEL_AHEAD = {1:1, 2:2, 3:3, 4:0};
+const panelStartFor = p => add(PANEL_BASE, -7*PANEL_AHEAD[p]);
+function panelThisWeek(p, k){ const n = Math.floor(diffDays(panelStartFor(p), k || todayKey())/7); return "NEID"[((n % 4) + 4) % 4]; }
+function panelFromSettings(st){
+  if(String(st.panelCycle||"").toUpperCase() !== "NEID" || !st.panelStart) return 0;
+  for(const p of [1,2,3,4]){ const d = diffDays(panelStartFor(p), st.panelStart); if(((d % 28) + 28) % 28 === 0) return p; }
+  return 0;
+}
+function setPanel(p){
+  if(p === "none"){ S.settings.panel = "none"; S.settings.showPanel = false; }
+  else { S.settings.panel = p; S.settings.panelStart = panelStartFor(p); S.settings.panelCycle = "NEID"; S.settings.showPanel = true; }
+  persist(); renderAll();
+}
+const PANEL_WEEK_NAME = {N:"Nights", E:"Evenings", I:"Irregular", D:"Days"};
+function showPanelPicker(first){
+  let ov = document.getElementById("panelPick");
+  if(!ov){ ov = document.createElement("div"); ov.id = "panelPick"; ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); ov.setAttribute("aria-labelledby","ppTitle"); document.body.appendChild(ov); }
+  const wk = todayKey();
+  ov.innerHTML = `<div class="ppIn">
+    <h2 id="ppTitle">${first ? "Welcome! " : ""}Which VSE panel are you on?</h2>
+    <div class="small">Your nights, evenings, irregular and days weeks go on the calendar automatically. Weeks change over on Tuesdays.</div>
+    <div class="ppGrid">${[1,2,3,4].map(p => `<button type="button" class="ppBtn${S.settings.panel===p?" on":""}" data-p="${p}"><span class="ppN">Panel ${p}</span><span class="ppW">This week: ${PANEL_WEEK_NAME[panelThisWeek(p, wk)]}</span><span class="ppW">Next week: ${PANEL_WEEK_NAME[panelThisWeek(p, add(wk,7))]}</span></button>`).join("")}</div>
+    <button type="button" class="btn" data-p="none" style="width:100%">I'm not on a panel</button>
+    <div class="small" style="opacity:.75">You can change this any time in Setup.</div>
+  </div>`;
+  ov.hidden = false;
+  ov.onclick = e => { const b = e.target.closest("[data-p]"); if(!b) return; const v = b.dataset.p === "none" ? "none" : Number(b.dataset.p); setPanel(v); ov.hidden = true; toast(v === "none" ? "No panel on the calendar" : `Panel ${v} is on your calendar`); };
+  const f = ov.querySelector(".ppBtn"); if(f) f.focus();
+}
+function maybeAskPanel(){ if(!S.settings.panel) showPanelPicker(!Object.keys(S.shifts||{}).length); }
 const PBT16 = [ // Part B 1.1 General Operations Roster, Mon..Sun; X = D/E
   "DDDDDDO","OOIIIIO","EEEEEOD","DDDDDOO","OOIIIEE","OOOOOXX","XXXOOII","IIOOOOO",
   "DDDDDDO","ONNNNOO","EEEEEOD","DDDDOOO","OOOOIII","IOOOOXX","XXXOOII","IIOEEOO"
@@ -689,6 +743,9 @@ function blankState(){
 // From payslips: pay fortnights run Mon–Sun (e.g. 12 Oct – 25 Oct 2026, paid the Thursday after);
 // night shifts are dated by the day they start; meal allowance is tax-free; VSE PAID comes out before tax.
 function migrate(st){
+  if(st.settings.panel === undefined && Object.keys(st.shifts || {}).length){
+    const p = panelFromSettings(st.settings); if(p) st.settings.panel = p;
+  }
   if((st.settings.v||1) < 2){
     st.settings.night = "start"; st.settings.anchor = "2026-10-26"; st.settings.v = 2;
     for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
@@ -1505,6 +1562,7 @@ function renderSetup(){
   $("setAnchor").value = S.settings.anchor;
   $("setPhUnworked").checked = !!S.settings.phUnworked;
   $("setShowPanel").checked = !!S.settings.showPanel;
+  $("panelBtns").innerHTML = [1,2,3,4].map(p => `<button type="button" data-panel="${p}" aria-pressed="${S.settings.panel===p}">${p}<small>${PANEL_WEEK_NAME[panelThisWeek(p)]}</small></button>`).join("");
   $("setShowSchool").checked = S.settings.showSchool !== false;
   $("setScrAnchor").value = S.settings.scrAnchor || S.settings.anchor;
   $("setPanelStart").value = S.settings.panelStart || "";
@@ -1726,8 +1784,9 @@ $("setPhUnworked").onchange = e => { S.settings.phUnworked = e.target.checked; p
 $("setScrAnchor").onchange = e => { if(e.target.value){ S.settings.scrAnchor = e.target.value; persist(); renderAll(); } };
 $("setShowSchool").onchange = e => { S.settings.showSchool = e.target.checked; persist(); renderAll(); };
 $("setShowPanel").onchange = e => { S.settings.showPanel = e.target.checked; persist(); renderAll(); };
-$("setPanelStart").onchange = e => { if(e.target.value){ S.settings.panelStart = e.target.value; persist(); renderAll(); } };
-$("setPanelCycle").onchange = e => { S.settings.panelCycle = e.target.value.toUpperCase().replace(/[^DENI]/g,""); persist(); renderAll(); };
+$("setPanelStart").onchange = e => { if(e.target.value){ S.settings.panelStart = e.target.value; S.settings.panel = panelFromSettings(S.settings) || "custom"; persist(); renderAll(); } };
+$("setPanelCycle").onchange = e => { S.settings.panelCycle = e.target.value.toUpperCase().replace(/[^DENI]/g,""); S.settings.panel = panelFromSettings(S.settings) || "custom"; persist(); renderAll(); };
+$("panelBtns").onclick = e => { const b = e.target.closest("[data-panel]"); if(!b) return; setPanel(Number(b.dataset.panel)); toast(`Panel ${b.dataset.panel} is on your calendar`); };
 for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
   $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
 $("holAdd").onclick = () => { const k = $("holDate").value; if(!k){ toast("Pick a date"); return; } S.hols[k] = $("holType").value; persist(); renderAll(); toast("Holiday added"); };
@@ -2386,7 +2445,7 @@ function saveSlips(){
 /* ============ START ============ */
 renderSetup();
 syncFill();
-connect();
+connect().then(maybeAskPanel);
 renderInstall();
 loadShips(true);
 $("shipRefresh").onclick = () => loadShips(true);
