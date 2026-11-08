@@ -647,7 +647,8 @@ const JOBS = [
   {id:"lashfwt", name:"Lash + fork work-through", g:2, sh:4, sg:3},
   {id:"rtgtug",  name:"RTG + tug",               g:4},
   {id:"fork",    name:"Fork + fork",             g:3},
-  {id:"rtgfork", name:"RTG + fork",              g:4}
+  {id:"rtgfork", name:"RTG + fork",              g:4},
+  {id:"bus",     name:"Bus",                     g:2}  // Part B 2.1: Bus is Grade 2
 ];
 const JOB = id => JOBS.find(j => j.id === id);
 // Hours at each grade for a shift: {2:4, 4:4} etc.
@@ -663,7 +664,7 @@ function jobFromPay(g, sh, sg, current){
   if(paid === gradeHours(2, 0, 0)) return "tug";   // Grade 2 all shift: tug unless you've picked lash
   return "";
 }
-const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork"};
+const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork",BUS:"bus"};
 const LETTER = t => t==="L" ? "R" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
 const PANEL_SHORT = {D:"day",E:"eve",N:"ngt",I:"irr"};
 // Panel cycle: from your payslips the blocks run Tuesday to Monday, repeating
@@ -1652,7 +1653,7 @@ function syncSheet(){
     : draft.type==="S"
     ? `<div><div class="lbl">Sick day pays</div><div class="small muted">7 hours at $55.50, the same as your payslips</div></div><div class="v num">${money(sickDayPay(sheetDay),2)}</div>`
     : c
-    ? `<div><div class="lbl">This shift pays</div><div class="small muted num">${c.splitH?`${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade}`:`8h × ${money(c.rate,2)}`} × ${c.m} (${multWhy(draft.type, c.start, c.hol)})${c.exH?` + ${c.exH}h × ${c.om}`:""} + allowance${c.meal?" + meal":""}</div></div><div class="v num">${money(c.gross,2)}</div>`
+    ? `<div><div class="lbl">This shift pays</div><div class="small muted num">${c.splitH?`${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade}`:`8h × ${money(c.rate,2)}`} × ${c.m} (${multWhy(draft.type, c.start, c.hol)})${c.exH?` + ${c.exH}h × ${c.om}`:""} + ${money(c.ca,2)} allowance${c.meal?` + ${money(c.meal,2)} meal`:""}</div></div><div class="v num">${money(c.gross,2)}</div>`
     : `<div class="small muted">${draft.type==="I"?"Irregular days aren't counted in pay until you set Day, Evening or Night.":draft.type==="L"?`Self-funded RDO: ${money(lp,2)}`:draft.type==="X"?"Scratched: no pay for this day.":"No pay for this day."}</div>`;
 }
 function renderWorth(c){
