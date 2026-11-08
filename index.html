@@ -1001,13 +1001,14 @@ function renderScrBar(){
 function sixLine(){
   const today = todayKey();
   let run = 0; for(let k = today; isWorkDay(S.shifts[k]); k = add(k,-1)) run++;
-  if(!run){ for(let k = add(today,-1); isWorkDay(S.shifts[k]); k = add(k,-1)) run++; }
-  let forced = ""; for(let i = 0; i <= 14 && !forced; i++){ const k = add(today,i), sh = S.shifts[k]; if(sh && sh.auto === "six") forced = k; }
+  // today not filled in yet: count the run up to yesterday. A day you've marked off (left off, RDO, scratch…) ends the run.
+  if(!run && !S.shifts[today]){ for(let k = add(today,-1); isWorkDay(S.shifts[k]); k = add(k,-1)) run++; }
+  let forced = ""; for(let i = 0; i <= 14 && !forced; i++){ const k = add(today,i), sh = S.shifts[k]; if((!sh || sh.type === "O") && sixOut(k)) forced = k; }
   let blocked = ""; for(let i = 0; i <= 14 && !blocked; i++){ const k = add(today,i); let pos = 0; for(let d = k; isWorkDay(S.shifts[d]); d = add(d,-1)) pos++; if(pos > 6) blocked = k; }
   const parts = [];
   if(run >= 4) parts.push(`<b class="${run >= 6 ? "over" : run === 5 ? "warn" : ""}">${run} in a row</b>` + (run >= 6 ? " · next day must be off" : ` · ${6-run} more allowed`));
   if(blocked) parts.push(`<b class="over">${nice(blocked)} would be a 7th in a row</b>`);
-  else if(forced) parts.push(`must be off ${nice(forced)}`);
+  else if(forced) parts.push(`6 & out on ${nice(forced)}`);
   return parts.length ? "Six-in-a-row: " + parts.join(" · ") : "";
 }
 function renderSummary(){
