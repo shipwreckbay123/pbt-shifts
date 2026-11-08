@@ -1,0 +1,44 @@
+# Publishes the app to https://shipwreckbay123.github.io/pbt-shifts/
+# Copies the app files from main onto the gh-pages branch, which GitHub Pages serves.
+name: Publish app
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "icons/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the app files to gh-pages
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          cp index.html manifest.webmanifest sw.js "$RUNNER_TEMP/site/"
+          cp -r icons "$RUNNER_TEMP/site/"
+          touch "$RUNNER_TEMP/site/.nojekyll"
+          git fetch origin gh-pages --depth 1 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse --verify origin/gh-pages >/dev/null 2>&1; then
+            git switch -C gh-pages origin/gh-pages
+          else
+            git switch --orphan gh-pages
+          fi
+          git rm -rq --cached . 2>/dev/null || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r "$RUNNER_TEMP/site/." .
+          git add -A
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "Publish app from ${GITHUB_SHA::7}"
+          git push origin gh-pages

@@ -1,0 +1,14 @@
+{
+  "name": "pbt-shifts-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Android wrapper for PBT Shifts & Pay. It opens the hosted app, so app updates arrive without reinstalling.",
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}
