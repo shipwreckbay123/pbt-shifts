@@ -995,7 +995,7 @@ function renderScrBar(){
   const st = scrPeriodStart(todayKey()), n = scrCount(st);
   const cls = n > SCR_LIMIT ? "over" : n >= 22 ? "warn" : "";
   $("scrBar").innerHTML = `Scratches: <b class="${cls}">${n} of ${SCR_LIMIT}</b>` + (n > SCR_LIMIT ? " · over the limit: no minimum salary this period" : ` · ${SCR_LIMIT-n} left`) + ` · resets ${nice(add(st,28))}`
-    + ((s6 => s6 ? `<br>${s6}` : "")(sixLine()));
+;
 }
 // Six in a row, at a glance: how long your current run is, and the next forced day off coming up.
 function sixLine(){
