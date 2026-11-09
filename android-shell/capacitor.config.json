@@ -1,12 +1,12 @@
 {
   "appId": "io.github.shipwreckbay123.pbtshifts",
-  "appName": "PBT Shifts",
+  "appName": "PBT VSE",
   "webDir": "www",
   "server": {
     "url": "https://shipwreckbay123.github.io/pbt-shifts/",
     "androidScheme": "https"
   },
   "android": {
-    "backgroundColor": "#12324f"
+    "backgroundColor": "#0c1a40"
   }
 }
