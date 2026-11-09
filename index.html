@@ -643,7 +643,7 @@ details.imp .btn{min-height:40px;font-size:14px}
 
     <h2>Holidays</h2>
     <div class="card stack">
-      <div class="small muted">NSW public holidays for 2026–27 are loaded. Good Friday, Anzac Day and Labour Day are closed port days. Add Picnic Day yourself once it's set.</div>
+      <div class="small muted">NSW public holidays for 2026–27 are loaded. Good Friday, Anzac Day, Labour Day and Picnic Day (Melbourne Cup Day, the first Tuesday in November) are closed port days. Picnic Day is added for you each year.</div>
       <div class="list" id="holList"></div>
       <div class="seg" style="grid-template-columns:1.3fr 1fr auto">
         <input type="date" id="holDate" aria-label="Holiday date">
@@ -857,6 +857,15 @@ const DEFAULT_HOLS = {
   "2027-01-01":"PH","2027-01-26":"PH","2027-03-26":"CPD","2027-03-27":"PH","2027-03-28":"PH","2027-03-29":"PH",
   "2027-04-25":"CPD","2027-04-26":"PH","2027-06-14":"PH","2027-10-04":"CPD","2027-12-25":"PH","2027-12-26":"PH","2027-12-27":"PH","2027-12-28":"PH"
 };
+// Picnic Day (closed port day, EBA Part A 30.1.1) falls on Melbourne Cup Day: the first Tuesday in November.
+// Added for last year to five years ahead. Each date is only added once, so if someone deletes one it stays deleted.
+function picnicDay(y){ const d = new Date(Date.UTC(y, 10, 1)); d.setUTCDate(1 + ((2 - d.getUTCDay() + 7) % 7)); return d.toISOString().slice(0,10); }
+function addPicnicDays(st){
+  const y0 = new Date().getFullYear(), done = new Set(st.settings.picnicAdded || []);
+  for(let y = y0 - 1; y <= y0 + 5; y++){ const k = picnicDay(y); if(!done.has(k)){ st.hols[k] = "CPD"; done.add(k); } }
+  st.settings.picnicAdded = [...done].sort();
+  return st;
+}
 // NSW public school holidays, Eastern division: days the kids are home (from the day after the last
 // student day to the day before the first student day, so school development days are included).
 // Source: education.nsw.gov.au term calendars 2026 and 2027.
@@ -895,6 +904,7 @@ function blankState(){
 // From payslips: pay fortnights run Mon–Sun (e.g. 12 Oct – 25 Oct 2026, paid the Thursday after);
 // night shifts are dated by the day they start; meal allowance is tax-free; VSE PAID comes out before tax.
 function migrate(st){
+  addPicnicDays(st);
   if(st.settings.panel === undefined && Object.keys(st.shifts || {}).length){
     const p = panelFromSettings(st.settings); if(p) st.settings.panel = p;
   }
@@ -919,7 +929,7 @@ function migrate(st){
   }
   return st;
 }
-let S = blankState();
+let S = addPicnicDays(blankState());
 
 /* ============ PAY ENGINE ============ */
 function step(dateKey){ let s = STEPS[0]; for(const x of STEPS) if(dateKey >= x.from) s = x; return s; }
