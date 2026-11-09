@@ -63,6 +63,10 @@ header.top{background:var(--navy);color:#fff;padding:14px 16px 16px}
 header.top .row{max-width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
 header.top h1 span{color:var(--accent)}
+/* Microster link, saved pill, take-home summary and scratches only show on the Calendar tab */
+body[data-tab]:not([data-tab="cal"]) header.top .mslink, body[data-tab]:not([data-tab="cal"]) #sync,
+body[data-tab]:not([data-tab="cal"]) #summary, body[data-tab]:not([data-tab="cal"]) #summarySub, body[data-tab]:not([data-tab="cal"]) #scrBar{display:none}
+body[data-tab]:not([data-tab="cal"]) header.top{padding-bottom:14px}
 header.top .lead{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
 .mslink{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:99px;background:var(--accent);color:var(--navy);font-weight:700;font-size:13px;text-decoration:none}
 .mslink:active{opacity:.8}
@@ -286,6 +290,12 @@ details.imp .btn{min-height:40px;font-size:14px}
 .ship .mt{display:inline-block;margin-top:3px;font:700 11px/1 var(--body);padding:3px 6px;border-radius:99px;background:var(--good);color:#fff}
 .ship.past{opacity:.5}
 .eofy .big{font:700 34px/1.1 var(--display)}
+:root{--pastY:#fff3c4;--pastYl:#ecd98a;--pastR:#ffd6d2;--pastRl:#f0a9a2}
+:root[data-theme="dark"]{--pastY:#3a3216;--pastYl:#5c4f22;--pastR:#3e1f1d;--pastRl:#6a332f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--pastY:#3a3216;--pastYl:#5c4f22;--pastR:#3e1f1d;--pastRl:#6a332f}}
+.eofy.calm{background:var(--pastY);border-color:var(--pastYl)}
+.eofy.hot{background:var(--pastR);border-color:var(--pastRl)}
+.eofy.calm .bar,.eofy.hot .bar{background:rgba(0,0,0,.1)}
 .eofy .bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px;position:relative}
 .eofy .bar i{display:block;height:100%;background:var(--good)}
 .eofy .bar i.warn{background:var(--warn)}.eofy .bar i.over{background:var(--ph)}
@@ -352,7 +362,7 @@ details.imp .btn{min-height:40px;font-size:14px}
       <div id="impList" class="list"></div>
       <label class="btn" id="slipPick" for="slipFile" style="display:flex;align-items:center;justify-content:center;text-align:center">Add payslip PDFs</label>
       <input type="file" id="slipFile" accept="application/pdf,.pdf" multiple class="vh">
-      <div class="small muted">Payslips are read on your phone and never sent anywhere. Only the shifts and pay totals are kept, not your name, address or bank details.</div>
+      <div class="small muted">Payslips are read on your phone and never sent anywhere. The app skips the top of the payslip, so your name, address and employee number aren't read at all. It only keeps your shifts, pay totals and leave balances. In the app, Microster screenshots are read on your phone too, and only the calendar part. If you'd rather, crop your name out of the screenshot first.</div>
       <details id="pasteBox">
         <summary class="small" style="cursor:pointer;font-weight:600">Or paste shift text</summary>
         <div class="stack" style="margin-top:8px">
@@ -365,20 +375,6 @@ details.imp .btn{min-height:40px;font-size:14px}
       </div>
     </details>
 
-    <details id="shipBox" class="card imp ships" style="margin-top:18px" open>
-      <summary>Ships at DP World · berths 10–12</summary>
-      <div class="stack" style="margin-top:10px">
-        <div class="small muted" id="shipUpd">Loading ship times…</div>
-        <div class="shipHead">Leaving</div>
-        <div class="list" id="shipOut"></div>
-        <details id="shipInBox">
-          <summary class="small" style="cursor:pointer;font-weight:600">Arriving</summary>
-          <div class="list" id="shipIn" style="margin-top:6px"></div>
-        </details>
-        <div class="btns"><button class="btn" id="shipRefresh" type="button">Refresh</button></div>
-        <div class="small muted">From the Port Authority of NSW <a href="https://www.portauthoritynsw.com.au/port-operations/port-botany/port-botany-daily-vessel-movements" target="_blank" rel="noopener">daily vessel movements</a>. Times change often. The list updates about every 15–30 minutes. "Your shift" means it's due to leave during a shift you've logged.</div>
-      </div>
-    </details>
   </section>
 
   <!-- PAY -->
@@ -452,6 +448,24 @@ details.imp .btn{min-height:40px;font-size:14px}
 
   <!-- SETUP -->
   <section id="v-port" class="view" aria-label="Port">
+    <details id="shipBox" class="card imp ships" style="margin-top:16px" open>
+      <summary>Ships at DP World · berths 10–12</summary>
+      <div class="stack" style="margin-top:10px">
+        <div class="small muted" id="shipUpd">Loading ship times…</div>
+        <details id="shipDockBox">
+          <summary class="small" style="cursor:pointer;font-weight:600">At berth now</summary>
+          <div class="list" id="shipDock" style="margin-top:6px"></div>
+        </details>
+        <div class="shipHead">Leaving</div>
+        <div class="list" id="shipOut"></div>
+        <details id="shipInBox">
+          <summary class="small" style="cursor:pointer;font-weight:600">Arriving</summary>
+          <div class="list" id="shipIn" style="margin-top:6px"></div>
+        </details>
+        <div class="btns"><button class="btn" id="shipRefresh" type="button">Refresh</button></div>
+        <div class="small muted">From the Port Authority of NSW <a href="https://www.portauthoritynsw.com.au/port-operations/port-botany/port-botany-daily-vessel-movements" target="_blank" rel="noopener">daily vessel movements</a>. Times change often. The list updates about every 15–30 minutes. "Your shift" means it's due to leave during a shift you've logged.</div>
+      </div>
+    </details>
     <h2>Wind at the terminal</h2>
     <div class="card" id="wxNow"><div class="small muted">Loading wind…</div></div>
     <div class="card" id="wxStorm" style="margin-top:12px"></div>
@@ -461,7 +475,7 @@ details.imp .btn{min-height:40px;font-size:14px}
       <div class="wxLeg"><span><i style="background:var(--wxg)"></i>Gusts</span><span><i style="background:var(--wxa)"></i>Average wind</span><span><i style="background:var(--ph);height:0;border-top:2px dashed var(--ph)"></i>Your warning line</span><span>⚡ Storms likely</span></div>
       <div class="small muted" style="margin-top:4px">Coloured strip along the bottom = your shifts. Touch the graph to see each hour.</div>
     </div>
-    <h2>Your shifts coming up</h2>
+    <h2>Your next 3 shifts</h2>
     <div class="card"><div id="wxShifts"></div></div>
     <div class="card stack" style="margin-top:12px">
       <div class="field"><label for="wxWarn">Warn me when gusts reach (km/h)</label><input type="number" id="wxWarn" inputmode="numeric" min="20" max="150" step="5"></div>
@@ -712,7 +726,7 @@ function jobFromPay(g, sh, sg, current){
   return "";
 }
 const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork",BUS:"bus"};
-const LETTER = t => t==="L" ? "R" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
+const LETTER = t => t==="L" ? "RDO" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
 const PANEL_SHORT = {D:"day",E:"eve",N:"ngt",I:"irr"};
 // Panel cycle: from your payslips the blocks run Tuesday to Monday, repeating
 // nights → evenings → irregular → days (nights week starting Tue 27 Oct 2026).
@@ -1272,8 +1286,7 @@ function renderPay(){
     <tr><td>Gross</td><td class="r">${money(slip.gross,2)}</td><td class="r">${money(p.paid,2)}</td></tr>
     <tr><td>Tax</td><td class="r">${money(slip.tax,2)}</td><td class="r">${money(p.tax,2)}</td></tr>
     <tr><td>Super</td><td class="r">${slip.super!=null?money(slip.super,2):"–"}</td><td class="r">${money(p.superAmt,2)}</td></tr>
-    ${slip.bank!==undefined ? `<tr><td>Take-home${slip.bank?" (incl. Bank 2)":""}</td><td class="r">${money(slip.net + (slip.bank||0),2)}</td><td class="r">${money(p.net - (slip.otherDed||0),2)}</td></tr>` : `<tr><td>Net (after all deductions)</td><td class="r">${money(slip.net,2)}</td><td class="r">–</td></tr>`}</table>
-    ${slip.bank ? `<div class="small muted" style="margin-top:4px">Your payslip's NET leaves out the ${money(slip.bank,2)} that goes to your second account (BANK 2), so it's added back here.${slip.otherDed?` Other deductions (${money(slip.otherDed,2)}) are taken off the app figure.`:""}</div>` : ""}
+    ${slip.bank!==undefined ? `<tr><td>Take-home</td><td class="r">${money(slip.net + (slip.bank||0),2)}</td><td class="r">${money(p.net - (slip.otherDed||0),2)}</td></tr>` : `<tr><td>Net (after all deductions)</td><td class="r">${money(slip.net,2)}</td><td class="r">–</td></tr>`}</table>
     ${Math.abs(slip.gross - p.paid) > 2 ? `<div class="small" style="margin-top:6px;color:var(--warn)">Gross is ${money(Math.abs(slip.gross-p.paid),2)} ${slip.gross>p.paid?"higher":"lower"} on the payslip. Check the shifts below.</div>` : `<div class="small muted" style="margin-top:6px">The app matches your payslip.</div>`}
     ${checkHTML(slip)}</div>` : "";
   const upg = upgradeStats(curF, to);
@@ -1409,24 +1422,14 @@ function renderEofy(){
   }
   const room = TOP_LINE - fc.taxable, lvl = room <= 0 ? "over" : room <= TOP_WARN ? "warn" : "";
   const pct = Math.min(100, fc.taxable / TOP_LINE * 100), shiftG = avgShiftGross();
-  card.className = "card eofy";
+  card.className = "card eofy " + (fc.taxable > TOP_LINE ? "hot" : "calm");   // pastel yellow, pastel red once predicted over $190k
+  al.hidden = true; al.innerHTML = "";   // the big amber alarm is off for now (Hemi's trial)
   card.innerHTML = `<div class="lbl">Predicted wages to 30 June ${fyE}</div>
     <div class="big num" style="margin-top:4px">${money(fc.gross,0)}</div>
     <div class="small muted num">Tax about ${money(fc.tax,0)} · super about ${money(fc.sup,0)}</div>
     <div class="bar" role="img" aria-label="${Math.round(pct)}% of the way to the 47% tax line"><i class="${lvl}" style="width:${pct}%"></i></div>
     <div class="small num" style="margin-top:6px">Taxable about ${money(fc.taxable,0)} · ${room > 0 ? `<b>${money(room,0)}</b> under the 47% tax line ($190,000)` : `<b style="color:var(--ph)">${money(-room,0)} over</b> the 47% tax line`}</div>
     <div class="small muted" style="margin-top:4px">Based on ${fc.known} pay${fc.known===1?"":"s"} so far and your recent average for the rest. Full breakdown on the Year tab.</div>`;
-  if(!lvl){ al.hidden = true; al.innerHTML = ""; return; }
-  const shifts = shiftG > 0 ? Math.floor(Math.max(0, room) / shiftG) : 0;
-  al.className = "alarm " + lvl; al.hidden = false;
-  al.innerHTML = lvl === "over"
-    ? `<div class="h">⚠ Over the 47% tax line</div>
-       <div class="v num">${money(-room,0)} over</div>
-       <div class="s">You're heading for about ${money(fc.taxable,0)} taxable this year. Every dollar over $190,000 is taxed at <b>47c</b> (45% + Medicare), so you keep only <b>53c</b> of each extra dollar. Extra shifts are worth a lot less from here.</div>`
-    : `<div class="h">⚠ Getting close to the 47% tax line</div>
-       <div class="v num">${money(room,0)} to go</div>
-       <div class="s">You're heading for about ${money(fc.taxable,0)} taxable this year. Over $190,000, every extra dollar is taxed at <b>47c</b> instead of 39c.${shifts ? ` That's room for about <b>${shifts} more shift${shifts===1?"":"s"}</b> like your recent ones on top of what's predicted.` : ""}</div>`;
-  al.innerHTML += `<div class="s" style="margin-top:8px;font-size:12px;opacity:.85">Counts your DP World pay only. Rental income or losses and work deductions move it up or down.</div>`;
 }
 // Upgrades: shifts (or part shifts) paid above your usual grade, from what you've logged as worked.
 function upgradeStats(from, to){
@@ -1526,7 +1529,7 @@ function renderYear(){
   }
   $("yearGrid").innerHTML = html;
   $("yearCounts").innerHTML = `<tr><th>${yearLabel()}</th><th class="r">Worked</th><th class="r">Planned</th></tr>` +
-    ["D","E","N","I","L","S","A","X","U"].map(t=>`<tr><td><span class="chip ${t}" style="display:inline-block;width:22px;border-radius:5px;text-align:center;margin-right:6px">${LETTER(t)}</span>${NAMES[t]}</td><td class="r">${counts[t][0]}</td><td class="r">${counts[t][1]}</td></tr>`).join("");
+    ["D","E","N","L","S","A","X","U"].map(t=>`<tr><td><span class="chip ${t}" style="display:inline-block;min-width:22px;padding:0 3px;box-sizing:border-box;border-radius:5px;text-align:center;margin-right:6px">${LETTER(t)}</span>${NAMES[t]}</td><td class="r">${counts[t][0]}</td><td class="r">${counts[t][1]}</td></tr>`).join("");
   const fyBox = $("yearMoney");
   if(S.settings.yearMode === "cal"){ fyBox.hidden = true; return; }
   const t = fyMoney(curYear);
@@ -1659,7 +1662,7 @@ function renderWx(){
   renderWxGraph(iNow);
   // ---- shifts in the next 7 days
   const rows = [];
-  for(let k = today; k <= add(today, 7); k = add(k,1)){
+  for(let k = today; k <= add(today, 9) && rows.length < 3; k = add(k,1)){   // weather changes a lot: only the next 3
     const sh = wxShiftOn(k); if(!sh) continue;
     const w = wxWindow(k, sh.type, sh.ext); if(!w) continue;
     if(k === today && sh.type !== "I" && (new Date()).getHours() >= w[1] + w[2]) continue;   // already finished
@@ -1669,7 +1672,7 @@ function renderWx(){
       <div class="small muted">${f.storm ? "⚡ storms likely · " : ""}${L === "over" ? "💨 " : ""}strongest around ${wxHourLabel(Number(f.at.slice(11,13)))}, from the ${wxFrom(f.dir)}</div></div>
       <div class="wg">${f.gust}<small>km/h gusts</small></div></div>`);
   }
-  $("wxShifts").innerHTML = rows.length ? rows.join("") : `<div class="small muted">No shifts in the next week to forecast. Log a shift or pick your panel in Setup and they'll show here.</div>`;
+  $("wxShifts").innerHTML = rows.length ? rows.join("") : `<div class="small muted">No shifts coming up to forecast. Log a shift or pick your panel in Setup and they'll show here.</div>`;
 }
 function renderWxGraph(iNow){
   const box = $("wxGraph"), H = WX.h;
@@ -1752,14 +1755,14 @@ function shipRow(m, out){
   const tk = todayKey(), day = p.k === tk ? "Today" : p.k === add(tk, 1) ? "Tmrw" : p.k ? D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" }) : "";
   const mine = out ? shipOnShift(m.time) : "";
   const past = Date.parse(m.time) < Date.now() - 30*60000;
-  const where = out ? (m.type === "Shift" ? `Moving to ${m.to}` : `To ${m.to}`) : (m.type === "Shift" ? `Moving from ${m.from}` : `From ${m.from}`);
+  const where = m.type === "Shift" ? "Moving berth" : "";   // no ports: nobody needs where it came from or goes next
   return `<div class="ship${mine ? " mine" : ""}${past ? " past" : ""}"><div class="st">${esc(p.hm)}<small>${esc(day)}</small></div>
-    <div class="sv"><b>${esc(m.vessel)}</b><span class="small muted">${esc(where)}</span>${mine ? `<br><span class="mt">Your ${NAMES[mine].toLowerCase()} shift</span>` : ""}</div>
+    <div class="sv"><b>${esc(m.vessel)}</b>${where ? `<span class="small muted">${esc(where)}</span>` : ""}${mine ? `<br><span class="mt">Your ${NAMES[mine].toLowerCase()} shift</span>` : ""}</div>
     <span class="bb">B${esc(String(m.berth||"").replace(/\D/g,""))}</span></div>`;
 }
 function renderShips(){
   const upd = document.getElementById("shipUpd"); if(!upd) return;
-  if(!shipData){ upd.textContent = shipErr || "Loading ship times…"; $("shipOut").innerHTML = ""; $("shipIn").innerHTML = ""; return; }
+  if(!shipData){ upd.textContent = shipErr || "Loading ship times…"; $("shipOut").innerHTML = ""; $("shipIn").innerHTML = ""; $("shipDock").innerHTML = ""; return; }
   const ok = m => m && m.time && Date.parse(m.time) > Date.now() - 3*3600000 && Date.parse(m.time) < Date.now() + 4*86400000;
   const BERTHS = new Set(shipData.berths || ["BD10","BD11","BD12"]);
   const bOf = s => (String(s||"").match(/\((BD\d+)\)/) || [])[1] || "";
@@ -1770,6 +1773,21 @@ function renderShips(){
   upd.textContent = (shipErr ? shipErr + " " : "") + `Updated ${mins < 1 ? "just now" : mins < 60 ? mins + " min ago" : Math.round(mins/60) + " h ago"}.`;
   $("shipOut").innerHTML = leaving.length ? leaving.map(m => shipRow(m, true)).join("") : `<div class="small muted">No ships due to leave berths 10–12 in the next few days.</div>`;
   $("shipIn").innerHTML = arriving.length ? arriving.map(m => shipRow(m, false)).join("") : `<div class="small muted">No ships due in.</div>`;
+  // At berth now: the Port Authority marks ships already in port ("In port: Yes") on their departure line;
+  // also count a ship whose arrival time has passed and that hasn't left yet.
+  const all = shipData.moves || [], now = Date.now(), dock = new Map();
+  for(const m of all){ const b = bOf(m.from); if(BERTHS.has(b) && m.inPort === "Yes" && Date.parse(m.time) > now - 2*3600000 && !dock.has(m.vessel)) dock.set(m.vessel, { vessel: m.vessel, berth: b, out: m.time }); }
+  for(const m of all){
+    const b = bOf(m.to); if(!BERTHS.has(b) || dock.has(m.vessel) || Date.parse(m.time) > now) continue;
+    const dep = all.find(d => d.vessel === m.vessel && bOf(d.from) === b && Date.parse(d.time) > Date.parse(m.time));
+    if(!dep || Date.parse(dep.time) > now) dock.set(m.vessel, { vessel: m.vessel, berth: b, out: dep ? dep.time : "" });
+  }
+  const docked = [...dock.values()].sort((a, b) => a.berth < b.berth ? -1 : 1);
+  $("shipDockBox").querySelector("summary").textContent = `At berth now (${docked.length})`;
+  $("shipDock").innerHTML = docked.length ? docked.map(d => { const p = shipParts(d.out); const tk = todayKey();
+    const day = p ? (p.k === tk ? "today" : p.k === add(tk, 1) ? "tomorrow" : D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" })) : "";
+    return `<div class="ship"><div class="st">B${esc(d.berth.replace(/\D/g,""))}</div><div class="sv"><b>${esc(d.vessel)}</b><span class="small muted">${p ? `Due out ${esc(day)} ${esc(p.hm)}` : "Leaving time not listed yet"}</span></div></div>`; }).join("")
+    : `<div class="small muted">No ships at berths 10–12 right now.</div>`;
 }
 async function loadShips(force){
   if(!force && Date.now() - shipAt < 5*60000) return renderShips();
@@ -1971,6 +1989,7 @@ document.addEventListener("click", e => {
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x===b)));
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.v));
+  document.body.dataset.tab = b.dataset.v;
   window.scrollTo(0,0);
 }));
 $("mPrev").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()-1); curMonth = K(d).slice(0,7); renderMonth(); };
@@ -2537,6 +2556,14 @@ function ensurePdf(){
   })();
   return pdfReady;
 }
+// Privacy: the top of each payslip page (company, EMP number, your name and address) is dropped before
+// anything reads it. Reading starts at the first pay line ("PAY NO", "PAY PERIOD", the shift table, payments,
+// deductions or leave). A page with none of those is dropped whole. Any "EMP. 1234" left is blanked too.
+const SLIP_START = /PAY\s*NO\b|PAY\s*PERIOD|WORKED\s+DATE|^\s*PAYMENTS\b|^\s*DEDUCTIONS\b|LEAVE\s+(BAL|TYPE|ENTITLE)/i;
+function slipKeep(lines){
+  const i = lines.findIndex(l => SLIP_START.test(l));
+  return i < 0 ? [] : lines.slice(i).map(l => l.replace(/\bEMP\.?\s*(NO\.?)?\s*:?\s*\d+/gi, "EMP ___"));
+}
 async function pdfText(file){
   const lib = await ensurePdf();
   const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported:false }).promise;
@@ -2552,7 +2579,7 @@ async function pdfText(file){
       L.items.push({ x, s: it.str });
     }
     lines.sort((a,b) => b.y - a.y);
-    for(const L of lines) out += L.items.sort((a,b) => a.x - b.x).map(t => t.s).join(" ").replace(/\s+/g," ") + "\n";
+    out += slipKeep(lines.map(L => L.items.sort((a,b) => a.x - b.x).map(t => t.s).join(" ").replace(/\s+/g," "))).join("\n") + "\n";
   }
   return out;
 }
