@@ -601,7 +601,6 @@ details.imp .btn{min-height:40px;font-size:14px}
         <div class="stepper"><button type="button" id="exMinus" aria-label="Less">−</button><output id="exVal" class="num">0</output><button type="button" id="exPlus" aria-label="More">+</button>
           <select id="shExGrade" aria-label="Grade for extra hours" style="flex:1"></select></div>
       </div>
-      <label class="check"><input type="checkbox" id="shMeal"> <span>Meal allowance <span class="small muted" id="shMealHint"></span></span></label>
     </div>
     <div class="field"><label for="shDayType">Day type</label>
       <select id="shDayType"><option value="">Normal</option><option value="PH">Public holiday</option><option value="CPD">Closed port day</option></select>
@@ -848,7 +847,9 @@ function calcShift(dayKey, sh){
   const om = otMult(start, hol);
   const extra = r2(exH * exRate * om);
   const mealAuto = autoMeal(sh.type, start, hol, exH);
-  const mealOn = sh.meal === undefined ? mealAuto : !!sh.meal;
+  // Meal allowance is automatic (Sunday-rate shifts, extensions, holidays worked). Only a shift brought in
+  // from a payslip keeps what the payslip actually paid.
+  const mealOn = sh.src === "slip" && sh.meal !== undefined ? !!sh.meal : mealAuto;
   const meal = mealOn ? st.meal : 0;
   const ca = st.ca;
   return { start, hol, grade, rate, m, splitH, splitGrade, splitRate, ordinary, exH, exGrade, exRate, om, extra, meal, mealAuto, ca,
@@ -1659,10 +1660,6 @@ function syncSheet(){
   $("shSub").textContent = draft.type && TIMES[draft.type] ? timesFor(sheetDay, draft.type) + holNote(sheetDay, draft.type) : (draft.type==="I" ? "You'll find out the day before. Change it once you're allocated." : draft.type==="L" ? "Self-funded RDO you booked. Paid as VSE LVE PD from your VSE PAID bank." : draft.type==="S" ? "Personal/carer's leave. Uses 7 hours of your sick leave balance." : draft.type==="X" ? "Scratched in Microster. Not paid, and doesn't count toward six in a row." : draft.type==="A" ? "Annual leave. Uses 7 hours of your annual leave balance." : draft.type==="U" ? "You were available but not given a shift. Not paid; counts toward your minimum salary check." : "Pick a shift");
   const dt = $("shDayType").value;
   const c = paid ? calcShift(sheetDay, {...draft, hol: dt}) : null;
-  if(c){
-    $("shMeal").checked = !!c.meal;
-    $("shMealHint").textContent = draft.meal === undefined ? (c.mealAuto ? "(added automatically)" : "(not due on this shift)") : "(set by you)";
-  }
   const lp = Number(S.settings.leavePay)||0;
   renderWorth(c);
   $("shPreview").innerHTML = draft.type==="A" && S.shifts[sheetDay] && S.shifts[sheetDay].nopay
@@ -1704,7 +1701,8 @@ function saveDraft(k, d){
   const out = { type:d.type, status: "OLSXAU".includes(d.type) ? "worked" : d.status, grade:Number(d.grade)||S.settings.grade, ext:d.ext||0, note:d.note||"" };
   if(d.splitH){ out.splitH = d.splitH; out.splitGrade = Number(d.splitGrade)||2; }
   if(d.ext && d.exGrade && Number(d.exGrade)!==out.grade) out.exGrade = Number(d.exGrade);
-  if(d.meal !== undefined) out.meal = !!d.meal;
+  const prev = S.shifts[k];   // a shift from a payslip keeps the payslip's meal allowance
+  if(prev && prev.src === "slip"){ out.src = "slip"; if(prev.meal !== undefined) out.meal = !!prev.meal; }
   if(d.type === "X") out.scr = d.scr || defaultScr(k);
   if(d.job && "DENI".includes(d.type)) out.job = d.job;
   if(d.type === "A" && d.nopay) out.nopay = true;
@@ -1758,7 +1756,6 @@ document.querySelectorAll("#shStatus button").forEach(b => b.onclick = () => { d
 $("exMinus").onclick = () => { draft.ext = Math.max(0,(draft.ext||0)-1); syncSheet(); };
 $("exPlus").onclick = () => { draft.ext = Math.min(4,(draft.ext||0)+1); if(!draft.exGrade) draft.exGrade = Number($("shExGrade").value)||draft.grade; syncSheet(); };
 $("shGrade").onchange = e => { delete draft.job; draft.grade = Number(e.target.value); if(!draft.exGrade) $("shExGrade").value = draft.grade; syncSheet(); };
-$("shMeal").onchange = e => { draft.meal = e.target.checked; syncSheet(); };
 $("shJob").innerHTML = JOBS.map(j => `<button type="button" data-job="${j.id}" aria-pressed="false">${j.name}</button>`).join("");
 document.querySelectorAll("#shJob button").forEach(b => b.onclick = () => {
   const j = JOB(b.dataset.job); if(!j) return;
