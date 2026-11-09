@@ -1364,13 +1364,16 @@ function renderEofy(){
 }
 // Upgrades: shifts (or part shifts) paid above your usual grade, from what you've logged as worked.
 function upgradeStats(from, to){
-  const base = Number(S.settings.grade) || 2, byJob = {}; let shifts = 0, hours = 0, extra = 0;
+  const base = Number(S.settings.grade) || 2, byJob = {}, tug = {n:0, h:0}; let shifts = 0, hours = 0, extra = 0;
   for(let k = from; k <= to; k = add(k,1)){
     const sh = S.shifts[k]; if(!sh || sh.status !== "worked") continue;
     const c = calcShift(k, sh); if(!c) continue;
     const baseRate = hrx(step(c.start), base);
     const fullH = c.grade > base ? SHIFT_HOURS - c.splitH : 0, partH = c.splitGrade > base ? c.splitH : 0;
-    if(!fullH && !partH) continue;
+    if(!fullH && !partH){   // tug shifts: no upgrade, counted just to see how many you get
+      if(sh.job === "tug" || (!sh.job && !c.splitH && Number(c.grade) === 2)){ tug.n++; tug.h += SHIFT_HOURS + (c.exH||0); }
+      continue;
+    }
     const plus = r2(fullH * (c.rate - baseRate) * c.m) + r2(partH * (c.splitRate - baseRate) * c.m);
     const name = upgName(sh, c);
     const top = Math.max(fullH ? c.grade : 0, partH ? c.splitGrade : 0);
@@ -1378,7 +1381,7 @@ function upgradeStats(from, to){
     const j = byJob[name] = byJob[name] || {n:0, h:0, extra:0, desc, top};
     j.n++; j.h += fullH + partH; j.extra += plus; shifts++; hours += fullH + partH; extra += plus;
   }
-  return { base, byJob, shifts, hours, extra };
+  return { base, byJob, shifts, hours, extra, tug };
 }
 // Name an upgrade by the job, not the grade. Payslips only show grades, so work it out:
 // whole shift Grade 4 = RTG + tug, whole shift Grade 3 = fork + fork,
@@ -1406,11 +1409,12 @@ function renderUpgrades(){
   const [from, to] = S.settings.yearMode === "cal" ? [curYear+"-01-01", curYear+"-12-31"] : [(curYear-1)+"-07-01", curYear+"-06-30"];
   const u = upgradeStats(from, to), miss = missedUpgrades(from, to);
   const rows = Object.entries(u.byJob).sort((a,b) => b[1].top - a[1].top || b[1].n - a[1].n);
-  box.innerHTML = `<div class="lbl">Upgrades in ${yearLabel()}</div>` + (u.shifts ? `
+  box.innerHTML = `<div class="lbl">Upgrades in ${yearLabel()}</div>` + (u.shifts || u.tug.n ? `
     <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Shifts</th><th class="r">Extra pay</th></tr>
     ${rows.map(([name, j]) => `<tr><td>${esc(name)}<div class="small muted">${esc(j.desc)} · ${j.h} h</div></td><td class="r">${j.n}</td><td class="r">${money(j.extra,2)}</td></tr>`).join("")}
-    <tr class="total"><td>Total</td><td class="r">${u.shifts}</td><td class="r">${money(u.extra,2)}</td></tr></table>
-    <div class="small muted" style="margin-top:6px">Extra pay is what the upgrade added on top of Grade ${u.base} for the same shift, penalty rate included. Counts shifts marked as worked.</div>`
+    <tr class="total"><td>Total</td><td class="r">${u.shifts}</td><td class="r">${money(u.extra,2)}</td></tr>
+    ${u.tug.n ? `<tr><td>Tug<div class="small muted">Grade 2, no upgrade · ${u.tug.h} h</div></td><td class="r">${u.tug.n}</td><td class="r">–</td></tr>` : ""}</table>
+    <div class="small muted" style="margin-top:6px">Extra pay is what the upgrade added on top of Grade ${u.base} for the same shift, penalty rate included. Counts shifts marked as worked. Tug shifts are shown for interest and aren't in the total.</div>`
     : `<div class="small muted" style="margin-top:6px">No upgrades logged as worked yet. Pick a job like "RTG + tug" or "Fork + fork" when you log a shift and it shows up here.</div>`)
     + (miss.n ? `<div class="note" style="margin-top:8px;border-color:var(--ph);background:rgba(210,60,60,.07)">Payslip check flagged <b>${miss.n} possibly missed upgrade${miss.n>1?"s":""}</b>${miss.amt>0?` (about ${money(miss.amt,2)})`:""}. Details are on the Pay tab for each fortnight.</div>` : "");
 }
