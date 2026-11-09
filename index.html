@@ -366,14 +366,12 @@ details.imp .btn{min-height:40px;font-size:14px}
     </div>
     <div class="kpis" style="margin-top:12px" id="payKpis"></div>
     <div id="payNote" style="margin-top:10px"></div>
-    <div id="dedBox" class="card" style="margin-top:12px"></div>
     <div id="gapBox" class="card" style="margin-top:12px" hidden></div>
     <h2>Week by week</h2>
     <div class="card tablebox"><table class="num" id="weekTable"></table></div>
     <h2>Shift by shift</h2>
     <div class="card"><div class="list" id="payList"></div></div>
     <h2>Financial year so far</h2>
-    <div class="small muted" id="fyNote" style="margin:-4px 0 8px"></div>
     <div class="card tablebox"><table class="num" id="fyTable"></table></div>
     <details class="card" style="margin-top:16px">
       <summary style="font-weight:600;cursor:pointer">How pay is worked out</summary>
@@ -1158,57 +1156,6 @@ function timesFor(k, type){
 }
 
 /* ---------- Pay ---------- */
-
-/* ---- Where the pay goes: deductions for one pay, and the financial-year tally ---- */
-// From a payslip: take-home = NET + BANK 2 (Bank 2 is his own money going to his other account, not a deduction).
-// "Other deductions" is whatever is left after tax and VSE PAID, so it always adds up to the payslip.
-function payMoney(f){
-  const sl = (S.payslips||{})[f];
-  if(sl && sl.gross){
-    const bank = Number(sl.bank)||0, take = r2((sl.net||0) + bank);
-    const other = Math.max(0, r2(sl.gross - (sl.tax||0) - (sl.vsePaid||0) - take));
-    return { kind:"slip", gross:sl.gross, tax:sl.tax||0, vse:sl.vsePaid||0, other, take, bank, sup: sl.super||0, bankKnown: sl.bank!==undefined };
-  }
-  const q = periodPay(f, add(f,13), false);
-  return { kind:"app", gross:q.paid, tax:q.tax, vse:q.vsePaid, other:0, take:q.net, bank:0, sup:q.superAmt, bankKnown:true };
-}
-function dedHTML(f){
-  const m = payMoney(f), slip = m.kind === "slip";
-  const line = (t, v, minus) => `<tr><td>${t}</td><td class="r">${minus && v ? "−" : ""}${money(v,2)}</td></tr>`;
-  let h = `<div class="lbl">Where this pay goes${slip ? " (from your payslip)" : " (estimate)"}</div>
-    <table class="num" style="margin-top:6px">
-    ${line("Gross pay", m.gross)}
-    ${line("Tax", m.tax, true)}
-    ${line("VSE PAID (comes out before tax)", m.vse, true)}
-    ${slip && m.other >= 0.5 ? line("Other deductions", m.other, true) : ""}
-    <tr class="total"><td>Take-home</td><td class="r">${money(m.take,2)}</td></tr>
-    ${m.bank ? `<tr><td style="padding-left:14px">to your main account</td><td class="r">${money(m.take - m.bank,2)}</td></tr><tr><td style="padding-left:14px">to Bank 2 (your other account)</td><td class="r">${money(m.bank,2)}</td></tr>` : ""}
-    </table>`;
-  if(m.bank) h += `<div class="small muted" style="margin-top:4px">Bank 2 is your own money going to your other account, so it's counted in take-home, not as a deduction.</div>`;
-  if(slip && m.other >= 0.5) h += `<div class="small muted" style="margin-top:4px">Other deductions are what's left on the payslip after tax and VSE PAID.${m.bankKnown ? "" : " This payslip was added before Bank 2 was read, so Bank 2 may be in this figure. Add the payslip again to split it out."}</div>`;
-  if(!slip) h += `<div class="small muted" style="margin-top:4px">Add this pay's payslip to see the real figures, including any other deductions.</div>`;
-  return h;
-}
-// Running total for the financial year: every pay with a pay date from 1 July up to today.
-// Payslip figures where you've added the payslip, otherwise worked out from the shifts you logged.
-function fyTally(fyE){
-  const start = (fyE-1) + "-07-01", end = fyE + "-06-30", today = todayKey();
-  const t = {gross:0, tax:0, vse:0, other:0, take:0, bank:0, sup:0}, c = {slip:0, app:0, missing:0};
-  let last = "";
-  for(let f = fortnightStart(add(start,-17)); add(f,17) <= end; f = add(f,14)){
-    const pd = add(f,17);
-    if(pd < start || pd > today) continue;
-    const sl = (S.payslips||{})[f];
-    let logged = !!(sl && sl.gross);
-    for(let x = f; x <= add(f,13) && !logged; x = add(x,1)){ const s2 = S.shifts[x]; logged = !!s2 && s2.status === "worked" && "DENSLA".includes(s2.type); }
-    if(!logged){ c.missing++; continue; }
-    const m = payMoney(f); c[m.kind]++; last = pd;
-    for(const key in t) t[key] += m[key];
-  }
-  let ytd = null;   // year-to-date gross on your latest payslip this financial year, as a check
-  for(const f in (S.payslips||{})){ const sl = S.payslips[f], pd = sl.payDate || add(f,17); if(pd >= start && pd <= end && sl.ytdGross && (!ytd || pd > ytd.pd)) ytd = {pd, gross: sl.ytdGross}; }
-  return {t, c, last, ytd, n: c.slip + c.app};
-}
 function checkHTML(slip){
   const c = slip.check;
   if(!c) return `<div class="small muted" style="margin-top:8px">Add this payslip PDF again to run the payslip check.</div>`;
@@ -1273,7 +1220,6 @@ function renderPay(){
     note += `<div class="note" style="margin-top:8px">${p.planned} planned shift${p.planned>1?"s":""} not counted yet. If ${p.planned>1?"they all go":"it goes"} ahead, gross would be about <b class="num">${money(proj.paid,2)}</b> and take-home about <b class="num">${money(proj.net,2)}</b>. Irregular days aren't included until you set the shift. Mark shifts as worked to count them.</div>`;
   }
   $("payNote").innerHTML = note;
-  $("dedBox").innerHTML = dedHTML(curF);
   renderGaps(curF, to);
 
   // weeks
@@ -1315,20 +1261,13 @@ function renderPay(){
   if(firstEntry && fortnightStart(firstEntry) > k) k = fortnightStart(firstEntry); // count from when you started logging
   const lastF = fortnightStart(todayKey());
   for(; k<=lastF; k=add(k,14)){ const q = periodPay(k, add(k,13), false); fG+=q.gross; fP+=q.paid; fT+=q.tax; fS+=q.superAmt; n++; }
-  const fy = fyTally(fyE), ft = fy.t;
-  $("fyNote").textContent = fy.n ? `Every pay from 1 July ${fyE-1} up to today, adding up as each payday comes.` : "";
-  $("fyTable").innerHTML = fy.n ? `
-    <tr><th>FY ${fyE-1}–${String(fyE).slice(2)}, paid so far</th><th class="r">${fy.n} pay${fy.n===1?"":"s"}</th></tr>
-    <tr><td>Gross pay</td><td class="r">${money(ft.gross,2)}</td></tr>
-    <tr><td>Tax</td><td class="r">−${money(ft.tax,2)}</td></tr>
-    <tr><td>VSE PAID</td><td class="r">−${money(ft.vse,2)}</td></tr>
-    ${ft.other >= 0.5 ? `<tr><td>Other deductions</td><td class="r">−${money(ft.other,2)}</td></tr>` : ""}
-    <tr class="total"><td>Take-home</td><td class="r">${money(ft.take,2)}</td></tr>
-    ${ft.bank ? `<tr><td style="padding-left:14px">of that, to Bank 2</td><td class="r">${money(ft.bank,2)}</td></tr>` : ""}
-    <tr><td>Super (on top)</td><td class="r">${money(ft.sup,2)}</td></tr>
-    <tr><td>Ahead of / behind minimum</td><td class="r">${money(fG - n*step(lastF).min/26,2)}</td></tr>
-    <tr><td colspan="2" class="small muted" style="white-space:normal">${fy.c.slip} from your payslips${fy.c.app ? `, ${fy.c.app} worked out from your logged shifts` : ""}${fy.c.missing ? `. ${fy.c.missing} earlier pay${fy.c.missing>1?"s aren't":" isn't"} in the app yet: add ${fy.c.missing>1?"those payslips":"that payslip"} to fill in the total` : ""}.${fy.ytd && Math.abs(fy.ytd.gross - ft.gross) > 5 ? ` Your latest payslip says ${money(fy.ytd.gross,2)} gross for the year so far.` : ""}</td></tr>`
-    : `<tr><td class="small muted" style="white-space:normal">No pays yet this financial year. Add a payslip or log your shifts and the total builds up each payday.</td></tr>`;
+  $("fyTable").innerHTML = `
+    <tr><th>FY ${fyE-1}–${String(fyE).slice(2)}, pays you've logged</th><th class="r">${n} pay${n===1?"":"s"}</th></tr>
+    <tr><td>Earned from shifts</td><td class="r">${money(fG,2)}</td></tr>
+    <tr><td>Paid (with minimum salary)</td><td class="r">${money(fP,2)}</td></tr>
+    <tr><td>Tax (est.)</td><td class="r">${money(fT,2)}</td></tr>
+    <tr><td>Super (est.)</td><td class="r">${money(fS,2)}</td></tr>
+    <tr class="total"><td>Ahead of / behind minimum</td><td class="r">${money(fG - n*step(lastF).min/26,2)}</td></tr>`;
 }
 
 /* ---------- Year ---------- */
