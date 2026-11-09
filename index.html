@@ -765,6 +765,11 @@ function migrate(st){
     for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
   }
   for(const k in st.shifts){ const s = st.shifts[k]; if(s.auto === "six" && s.note === "Must be off: 6 in a row") s.note = ""; }
+  // Nov 2026: days marked Off that aren't 6 and out are Left off (done once)
+  if(!st.settings.leftOffV1){
+    for(const k in st.shifts){ const s = st.shifts[k]; if(s.type === "O" && s.auto !== "six"){ s.type = "U"; s.auto = "left"; } }
+    st.settings.leftOffV1 = 1;
+  }
   // shifts brought in from payslips before jobs were worked out: name the job from the pay
   for(const k in st.shifts){ const s = st.shifts[k]; if(s.src === "slip" && !s.job && "DEN".includes(s.type)){ const j = jobFromPay(s.grade, s.splitH, s.splitGrade); if(j) s.job = j; } }
   // RTG + tug / RTG + fork used to be logged as a 4-hour part upgrade; payslips pay the whole shift at Grade 4.
@@ -983,7 +988,7 @@ function enforceSixDay(protect){
     run++;
     if(run === 6){
       const nx = add(k,1), ex = S.shifts[nx];
-      if(!ex || (!isWorkDay(ex))){ if(!ex){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"" }; added.push(nx); } }
+      if(!ex || (!isWorkDay(ex))){ if(!ex || ex.auto === "left"){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"" }; added.push(nx); } }
       else if(ex.status !== "worked" && !keep.has(nx)){ S.shifts[nx] = { type:"O", status:"worked", auto:"six", note:"" }; added.push(nx); }
       else blocked.push(nx);
       run = 0; if(S.shifts[nx] && S.shifts[nx].auto === "six") k = nx;
@@ -991,8 +996,20 @@ function enforceSixDay(protect){
   }
   return {added, blocked};
 }
+// Every past day with nothing on it is Left off. A VSE day is worked, leave, scratched, 6 and out, or left off.
+// Runs from the first payslip or logged day up to yesterday. Logging anything on the day replaces it.
+function fillLeftOff(){
+  const all = Object.keys(S.shifts).concat(Object.keys(S.payslips||{})).sort();
+  if(!all.length) return 0;
+  const end = add(todayKey(), -1); let n = 0;
+  for(let k = all[0]; k <= end; k = add(k,1)){
+    if(!S.shifts[k]){ S.shifts[k] = { type:"U", status:"worked", auto:"left", note:"" }; n++; }
+  }
+  return n;
+}
 function persist(protect){
   const r = enforceSixDay(protect);
+  fillLeftOff();
   const fresh = r.added.filter(k => k >= add(todayKey(), -14));
   if(fresh.length) ruleMsg = `${fresh.map(nice).join(", ")}: 6 and out`;
   else if(r.blocked.some(k => k >= add(todayKey(), -14))) ruleMsg = `Heads up: ${r.blocked.filter(k => k >= add(todayKey(), -14)).map(nice).join(", ")} would be a 7th shift in a row`;
@@ -1013,7 +1030,7 @@ async function flush(){
   writing = false; if(dirty) flush();
 }
 async function connect(){
-  const cached = lsLoad(); if(cached) S = merge(cached);
+  const cached = lsLoad(); if(cached){ S = merge(cached); enforceSixDay(); if(fillLeftOff()) lsSave(); }   // no new timestamp: the account copy still decides which is newer
   renderAll();
   setSync(cached ? "Saved on this phone" : "Saved on this phone", "local");
   try {
@@ -1031,7 +1048,7 @@ async function connect(){
     mode = "db";
     if(snap.exists){
       const remote = JSON.parse(snap.data().json || "{}");
-      if(!cached || (remote.updatedAt||0) >= (S.updatedAt||0)){ S = merge(remote); lsSave(); renderAll(); }
+      if(!cached || (remote.updatedAt||0) >= (S.updatedAt||0)){ S = merge(remote); enforceSixDay(); if(fillLeftOff()) persist(); else lsSave(); renderAll(); }
       else { dirty = true; flush(); }
       setSync("Saved to your account", "ok");
     } else if(cached){ dirty = true; flush(); }
@@ -2421,7 +2438,7 @@ function slipToDays(slip){
     } else if(rs.some(r => r.sh === "RO")){
       if(lv[k] === "VSP") days.push({ k, type:"L", label:"Self-funded RDO" });
       else if(lv[k] === "ANN") days.push({ k, type:"A", label:"Annual leave" });
-      else days.push({ k, type:"O", label:"Rostered off" });
+      else days.push({ k, type:"U", label:"Left off" });
     }
   }
   for(const k in lv){ if(!days.some(d => d.k === k)){
