@@ -305,6 +305,8 @@ details.imp .btn{min-height:40px;font-size:14px}
 :root{--wxg:#1f6fb2;--wxa:#2a9d8f}
 :root[data-theme="dark"]{--wxg:#5a96e0;--wxa:#21a383}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--wxg:#5a96e0;--wxa:#21a383}}
+.shSplit{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.shSplit>.num{font:600 20px/1.1 var(--display);white-space:nowrap}
 .cell .wx{font-size:10px;line-height:1;margin-left:auto;letter-spacing:-1px}
 .cell .wx.far{opacity:.45}
 .wxNow{display:flex;align-items:center;gap:14px}
@@ -2009,6 +2011,14 @@ function syncSheet(){
     ? `<div><div class="lbl">Annual leave day pays</div><div class="small muted">1/5 of weekly VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay),2)}</div>`
     : draft.type==="S"
     ? `<div><div class="lbl">Sick day pays</div><div class="small muted">7 hours at $55.50, the same as your payslips</div></div><div class="v num">${money(sickDayPay(sheetDay),2)}</div>`
+    : c && c.exH
+    // With an extension: the shift and the extension as two figures (the payslip has them on separate lines,
+    // and the meal allowance sits with the extension there too), then the total.
+    ? `<div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><div class="lbl">This shift pays</div><div class="v num">${money(c.gross,2)}</div></div>
+        <div class="shSplit"><div><b>Shift</b><div class="small muted num">${c.splitH?`${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade}`:`8h × ${money(c.rate,2)}`} × ${c.m} (${multWhy(draft.type, c.start, c.hol)}) + ${money(c.ca,2)} allowance</div></div><div class="num">${money(c.ordinary + c.ca,2)}</div></div>
+        <div class="shSplit"><div><b>Extension</b><div class="small muted num">${c.exH}h × ${money(c.exRate,2)} (Grade ${c.exGrade}) × ${c.om}${c.meal?` + ${money(c.meal,2)} meal`:""}</div></div><div class="num">${money(c.extra + c.meal,2)}</div></div>
+      </div>`
     : c
     ? `<div><div class="lbl">This shift pays</div><div class="small muted num">${c.splitH?`${8-c.splitH}h G${c.grade} + ${c.splitH}h G${c.splitGrade}`:`8h × ${money(c.rate,2)}`} × ${c.m} (${multWhy(draft.type, c.start, c.hol)})${c.exH?` + ${c.exH}h × ${c.om}`:""} + ${money(c.ca,2)} allowance${c.meal?` + ${money(c.meal,2)} meal`:""}</div></div><div class="v num">${money(c.gross,2)}</div>`
     : `<div class="small muted">${draft.type==="I"?"Irregular days aren't counted in pay until you set Day, Evening or Night.":draft.type==="L"?`Self-funded RDO: ${money(lp,2)}`:draft.type==="X"?"Scratched: no pay for this day.":"No pay for this day."}</div>`;
