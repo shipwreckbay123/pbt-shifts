@@ -236,8 +236,8 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 @media (prefers-reduced-motion: reduce){.sheet{transition:none}}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:10}
-nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
-nav.tabs button{background:none;border:0;min-height:58px;font:600 15px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
+nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs button{background:none;border:0;min-height:58px;font:600 14px var(--display);letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
 .view{display:none}
 .view.on{display:block}
@@ -247,6 +247,33 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--ac
 details.imp{padding:12px 14px}
 details.imp > summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
 details.imp .btn{min-height:40px;font-size:14px}
+
+/* Port tab: weather. Gusts = blue line, average wind = teal area (checked for colour-blind separation). */
+:root{--wxg:#1f6fb2;--wxa:#2a9d8f}
+:root[data-theme="dark"]{--wxg:#5a96e0;--wxa:#21a383}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--wxg:#5a96e0;--wxa:#21a383}}
+.cell .wx{font-size:10px;line-height:1;margin-left:auto;letter-spacing:-1px}
+.cell .wx.far{opacity:.45}
+.wxNow{display:flex;align-items:center;gap:14px}
+.wxBig{font:700 52px/1 var(--display)}
+.wxUnit{font:600 15px var(--display);color:var(--muted);margin-left:3px}
+.wxSide{display:flex;flex-direction:column;gap:3px;min-width:0}
+.wxPill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font:600 13px var(--body);align-self:flex-start}
+.wxPill.ok{background:rgba(46,139,87,.12);color:var(--good)}
+.wxPill.near{background:rgba(183,121,31,.14);color:var(--warn)}
+.wxPill.over{background:rgba(210,60,60,.12);color:var(--ph)}
+.wxArrow{flex:0 0 auto}
+.wxGraph{position:relative}
+.wxGraph svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.wxTip{position:absolute;top:0;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:500 12px/1.35 var(--body);box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:nowrap}
+.wxLeg{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-size:12px;color:var(--muted)}
+.wxLeg i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.wxRow{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.wxRow:first-child{border-top:0}
+.wxRow .wd{flex:1;min-width:0}
+.wxRow .wg{font:700 20px/1 var(--display);text-align:right}
+.wxRow .wg small{display:block;font:500 11px var(--body);color:var(--muted)}
+.wxRow.over .wg{color:var(--ph)} .wxRow.near .wg{color:var(--warn)}
 .shipHead{font:700 13px/1 var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .ship{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .ship:last-child{border-bottom:0}
@@ -424,6 +451,25 @@ details.imp .btn{min-height:40px;font-size:14px}
   </section>
 
   <!-- SETUP -->
+  <section id="v-port" class="view" aria-label="Port">
+    <h2>Wind at the terminal</h2>
+    <div class="card" id="wxNow"><div class="small muted">Loading wind…</div></div>
+    <div class="card" id="wxStorm" style="margin-top:12px"></div>
+    <h2>Next 3 days</h2>
+    <div class="card">
+      <div class="wxGraph" id="wxGraph"></div>
+      <div class="wxLeg"><span><i style="background:var(--wxg)"></i>Gusts</span><span><i style="background:var(--wxa)"></i>Average wind</span><span><i style="background:var(--ph);height:0;border-top:2px dashed var(--ph)"></i>Your warning line</span><span>⚡ Storms likely</span></div>
+      <div class="small muted" style="margin-top:4px">Coloured strip along the bottom = your shifts. Touch the graph to see each hour.</div>
+    </div>
+    <h2>Your shifts coming up</h2>
+    <div class="card"><div id="wxShifts"></div></div>
+    <div class="card stack" style="margin-top:12px">
+      <div class="field"><label for="wxWarn">Warn me when gusts reach (km/h)</label><input type="number" id="wxWarn" inputmode="numeric" min="20" max="150" step="5"></div>
+      <div class="btns"><button class="btn" id="wxRefresh" type="button">Refresh now</button></div>
+      <div class="small muted">Wind comes from Open-Meteo's weather model for the terminal, updated about every 15 minutes. It's an estimate, not a wind gauge on site, and the supervisor decides when work stops. 💨 on the calendar = a shift forecast to hit your warning line; ⚡ = storms likely. Icons more than 3 days out are faint because forecasts that far ahead are rougher.</div>
+    </div>
+  </section>
+
   <section id="v-set" class="view" aria-label="Setup">
     <h2>Fill a week or a run of weeks</h2>
     <div class="card stack">
@@ -545,6 +591,7 @@ details.imp .btn{min-height:40px;font-size:14px}
   <button role="tab" data-v="cal" aria-selected="true">Calendar</button>
   <button role="tab" data-v="pay" aria-selected="false">Pay</button>
   <button role="tab" data-v="year" aria-selected="false">Year</button>
+  <button role="tab" data-v="port" aria-selected="false">Port</button>
   <button role="tab" data-v="set" aria-selected="false">Setup</button>
 </div></nav>
 
@@ -556,6 +603,7 @@ details.imp .btn{min-height:40px;font-size:14px}
       <h2 id="shTitle">Day</h2>
       <div class="small muted" id="shSub"></div>
       <div class="small muted" id="shPanel"></div>
+      <div class="small" id="shWx"></div>
     </div>
     <div class="field"><span class="lbl">Shift</span>
       <div class="seg c3" id="shType">
@@ -1119,7 +1167,7 @@ function cellHTML(k, today){
   const inMonth = k.slice(0,7) === curMonth;
   const sh = S.shifts[k], hol = S.hols[k], pn = panelFor(k), sc = schoolHol(k);
   return `<button class="cell${inMonth?"":" out"}${k===today?" today":""}${pn?" pw-"+pn:""}${sc?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sc?", school holidays":""}${pn?", panel "+NAMES[pn]:""}${sh?", "+NAMES[sh.type]+(sh.status==="worked"?" worked":" planned"):""}${hol?", "+holName(hol):""}">
-      <span class="hd"><span class="dl"><span class="d">${D(k).getUTCDate()}</span>${hol?`<span class="hol">${holBadge(hol)}</span>`:""}</span>${pn||(sh&&sh.ext)?`<span class="sub">${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:"<span></span>"}${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}</span>`:""}</span>
+      <span class="hd"><span class="dl"><span class="d">${D(k).getUTCDate()}</span>${hol?`<span class="hol">${holBadge(hol)}</span>`:""}${wxCellIcon(k, today)}</span>${pn||(sh&&sh.ext)?`<span class="sub">${pn?`<span class="pn">${PANEL_SHORT[pn]}</span>`:"<span></span>"}${sh&&sh.ext?`<span class="ext">+${sh.ext}h</span>`:""}</span>`:""}</span>
       ${chipHTML(sh, k) || '<div class="chip" style="visibility:hidden">·</div>'}
     </button>`;
 }
@@ -1491,6 +1539,196 @@ function renderYear(){
 }
 
 /* ---------- Setup ---------- */
+
+/* ============ WEATHER (Port tab) ============ */
+// Open-Meteo (free, no key): wind now + hourly forecast for the DP World terminal, Sydney time.
+// Weather codes 95, 96, 99 = thunderstorm. Kept on the phone only, not in your saved shifts.
+const WX_LAT = -33.968, WX_LON = 151.215;
+const WX_URL = `https://api.open-meteo.com/v1/forecast?latitude=${WX_LAT}&longitude=${WX_LON}&current=wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&timezone=Australia%2FSydney&forecast_days=10&wind_speed_unit=kmh`;
+const WX_KEY = "pbt-wx-v1";
+let WX = null, wxBusy = false, wxErr = "";
+try { WX = JSON.parse(localStorage.getItem(WX_KEY) || "null"); } catch(e){ WX = null; }
+const wxWarn = () => Number(S.settings.windWarn) || 50;
+const wxStormCode = c => c === 95 || c === 96 || c === 99;
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const wxFrom = deg => COMPASS[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+const wxHourLabel = h => h === 0 ? "midnight" : h === 12 ? "midday" : (h % 12) + (h < 12 ? "am" : "pm");
+const wxLevel = g => g >= wxWarn() ? "over" : g >= wxWarn() - 10 ? "near" : "ok";
+async function loadWx(force){
+  if(wxBusy) return;
+  if(!force && WX && Date.now() - WX.at < 10*60e3){ renderWx(); return; }
+  wxBusy = true; wxErr = "";
+  try {
+    const r = await fetch(WX_URL, {cache:"no-store"});
+    if(!r.ok) throw new Error("http " + r.status);
+    const j = await r.json();
+    if(!j.hourly || !j.hourly.time) throw new Error("no data");
+    WX = { at: Date.now(), cur: j.current || null, h: j.hourly };
+    try { localStorage.setItem(WX_KEY, JSON.stringify(WX)); } catch(e){}
+  } catch(e){
+    const inClaude = !!(window.claude && typeof window.claude.use === "function");   // Claude pages can't reach outside sites
+    wxErr = inClaude ? "Weather can't load inside Claude. Open the PBT Shifts app on your phone (the APK) to see it."
+      : WX ? "Couldn't update just now, showing the last forecast." : "Couldn't load the wind forecast. Check you've got signal, then tap Refresh.";
+  }
+  wxBusy = false;
+  renderWx(); renderMonth();
+}
+// Hours a shift covers: [date it starts, start hour, length]. Irregular = the whole day from 6am.
+function wxWindow(k, type, ext){
+  const len = 8 + (Number(ext) || 0);
+  if(type === "D") return [k, 6, len];
+  if(type === "E") return [k, 14, len];
+  if(type === "N") return [k, 22, len];
+  if(type === "I") return [k, 6, 24];
+  return null;
+}
+// The shift on a day: what you've logged, otherwise your panel week (if nothing's logged yet).
+function wxShiftOn(k){
+  const sh = S.shifts[k];
+  if(sh) return "DENI".includes(sh.type) ? { type: sh.type, ext: sh.ext, logged: true } : null;
+  const pn = panelFor(k);
+  return pn ? { type: pn, ext: 0, logged: false } : null;
+}
+function wxSlice(k, h0, len){
+  if(!WX || !WX.h) return [];
+  const H = WX.h, i0 = H.time.indexOf(k + "T" + pad(h0) + ":00");
+  if(i0 < 0) return [];
+  const out = [];
+  for(let i = i0; i < Math.min(i0 + len, H.time.length); i++){
+    out.push({ t: H.time[i], ws: H.wind_speed_10m[i], wg: H.wind_gusts_10m[i], wd: H.wind_direction_10m[i], code: H.weather_code[i] });
+  }
+  return out;
+}
+function wxForShift(k, sh){
+  const w = wxWindow(k, sh.type, sh.ext); if(!w) return null;
+  const hrs = wxSlice(w[0], w[1], w[2]).filter(x => x.wg !== null && x.wg !== undefined);
+  if(!hrs.length) return null;
+  let top = hrs[0]; for(const x of hrs) if(x.wg > top.wg) top = x;
+  const storms = hrs.filter(x => wxStormCode(x.code));
+  return { gust: Math.round(top.wg), wind: Math.round(Math.max(...hrs.map(x => x.ws))), at: top.t, dir: top.wd, storm: storms.length > 0, stormAt: storms.length ? storms[0].t : "", days: diffDays(todayKey(), k) };
+}
+function wxCellIcon(k, today){
+  if(!WX || k < today) return "";
+  const sh = wxShiftOn(k); if(!sh) return "";
+  const f = wxForShift(k, sh); if(!f) return "";
+  const windy = f.gust >= wxWarn();
+  if(!windy && !f.storm) return "";
+  return `<span class="wx${f.days > 3 ? " far" : ""}" title="${windy ? `Gusts to ${f.gust} km/h` : ""}${windy && f.storm ? ", " : ""}${f.storm ? "storms likely" : ""}">${f.storm ? "⚡" : ""}${windy ? "💨" : ""}</span>`;
+}
+function wxSheetLine(k, type, ext){
+  if(!WX || !"DENI".includes(type) || k < add(todayKey(), -1)) return "";
+  const f = wxForShift(k, { type, ext }); if(!f) return "";
+  const lvl = wxLevel(f.gust);
+  return `<span style="color:${lvl === "over" ? "var(--ph)" : lvl === "near" ? "var(--warn)" : "var(--muted)"}">${lvl === "over" ? "💨 " : ""}Forecast: gusts up to ${f.gust} km/h around ${wxHourLabel(Number(f.at.slice(11,13)))}${f.storm ? ` · ⚡ storms likely from ${wxHourLabel(Number(f.stormAt.slice(11,13)))}` : ""}</span>`;
+}
+function wxArrowSVG(deg, size){
+  // Arrow points the way the wind is blowing TO (wind direction is where it comes FROM).
+  return `<svg class="wxArrow" width="${size}" height="${size}" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="var(--line)" stroke-width="2"/><text x="22" y="9" text-anchor="middle" font-size="7" fill="var(--muted)" font-family="var(--body)">N</text><g transform="rotate(${(deg + 180) % 360} 22 22)"><path d="M22 8 L28 24 L22 20 L16 24 Z" fill="var(--wxg)"/><rect x="20.5" y="20" width="3" height="15" rx="1.5" fill="var(--wxg)"/></g></svg>`;
+}
+function renderWx(){
+  const nowBox = $("wxNow"); if(!nowBox) return;
+  const warnIn = $("wxWarn"); if(warnIn && document.activeElement !== warnIn) warnIn.value = wxWarn();
+  if(!WX || !WX.h){ nowBox.innerHTML = `<div class="small muted">${wxBusy ? "Loading wind…" : (wxErr || "Loading wind…")}</div>`; $("wxStorm").innerHTML = ""; $("wxGraph").innerHTML = ""; $("wxShifts").innerHTML = ""; return; }
+  const today = todayKey(), H = WX.h;
+  const nowStr = (() => { const t = new Date(); return today + "T" + pad(t.getHours()) + ":00"; })();
+  let iNow = H.time.indexOf(nowStr); if(iNow < 0) iNow = 0;
+  // ---- wind now
+  const c = WX.cur || { wind_speed_10m: H.wind_speed_10m[iNow], wind_gusts_10m: H.wind_gusts_10m[iNow], wind_direction_10m: H.wind_direction_10m[iNow], time: H.time[iNow] };
+  const g = Math.round(c.wind_gusts_10m), lvl = wxLevel(g);
+  let peak = { wg: -1 }; for(let i = iNow; i < Math.min(iNow + 3, H.time.length); i++) if(H.wind_gusts_10m[i] > peak.wg) peak = { wg: H.wind_gusts_10m[i], t: H.time[i] };
+  const upd = new Date(WX.at);
+  nowBox.innerHTML = `<div class="wxNow">
+      ${wxArrowSVG(c.wind_direction_10m, 64)}
+      <div class="wxSide">
+        <div class="lbl">Gusts now</div>
+        <div><span class="wxBig num">${g}</span><span class="wxUnit">km/h</span></div>
+        <div class="small muted">Average ${Math.round(c.wind_speed_10m)} km/h from the ${wxFrom(c.wind_direction_10m)}</div>
+      </div></div>
+    <div class="wxPill ${lvl}" style="margin-top:10px">${lvl === "over" ? "💨 Over your " + wxWarn() + " km/h line" : lvl === "near" ? "Close to your " + wxWarn() + " km/h line" : "Below your " + wxWarn() + " km/h line"}</div>
+    <div class="small muted" style="margin-top:8px">Next 3 hours: gusts up to ${Math.round(peak.wg)} km/h. Updated ${upd.toLocaleTimeString("en-AU", {hour:"numeric", minute:"2-digit"})}${wxErr ? ". " + esc(wxErr) : ""}</div>`;
+  // ---- storms in the next 3 days
+  const spans = []; let cur = null;
+  for(let i = iNow; i < Math.min(iNow + 72, H.time.length); i++){
+    if(wxStormCode(H.weather_code[i])){ if(cur && cur.end === i - 1) cur.end = i; else { cur = { start: i, end: i }; spans.push(cur); } }
+  }
+  const spanTxt = sp => { const a = H.time[sp.start], b = H.time[sp.end + 1] || H.time[sp.end]; return `${nice(a.slice(0,10))} ${wxHourLabel(Number(a.slice(11,13)))}–${wxHourLabel(Number(b.slice(11,13)))}`; };
+  $("wxStorm").innerHTML = `<div class="lbl">Storms & lightning</div>
+    <div style="margin-top:6px">${spans.length ? "⚡ Thunderstorms likely: " + spans.map(spanTxt).join(", ") : "No thunderstorms forecast in the next 3 days."}</div>
+    <div class="small muted" style="margin-top:6px">Lightning within 10 km stops work, and it restarts 20 minutes after the last strike. This shows the storm forecast, not live strikes.</div>`;
+  // ---- graph: next 72 hours
+  renderWxGraph(iNow);
+  // ---- shifts in the next 7 days
+  const rows = [];
+  for(let k = today; k <= add(today, 7); k = add(k,1)){
+    const sh = wxShiftOn(k); if(!sh) continue;
+    const w = wxWindow(k, sh.type, sh.ext); if(!w) continue;
+    if(k === today && sh.type !== "I" && (new Date()).getHours() >= w[1] + w[2]) continue;   // already finished
+    const f = wxForShift(k, sh); if(!f) continue;
+    const L = wxLevel(f.gust);
+    rows.push(`<div class="wxRow ${L}"><div class="wd"><b>${nice(k)}</b> · ${NAMES[sh.type]}${sh.logged ? "" : ` <span class="small muted">(panel week)</span>`}
+      <div class="small muted">${f.storm ? "⚡ storms likely · " : ""}${L === "over" ? "💨 " : ""}strongest around ${wxHourLabel(Number(f.at.slice(11,13)))}, from the ${wxFrom(f.dir)}</div></div>
+      <div class="wg">${f.gust}<small>km/h gusts</small></div></div>`);
+  }
+  $("wxShifts").innerHTML = rows.length ? rows.join("") : `<div class="small muted">No shifts in the next week to forecast. Log a shift or pick your panel in Setup and they'll show here.</div>`;
+}
+function renderWxGraph(iNow){
+  const box = $("wxGraph"), H = WX.h;
+  const n = Math.min(72, H.time.length - iNow); if(n < 2){ box.innerHTML = ""; return; }
+  const W = 380, Ht = 220, L = 26, R = 4, T = 20, B = 40, pw = W - L - R, ph = Ht - T - B;
+  const pts = []; for(let j = 0; j < n; j++){ const i = iNow + j; pts.push({ t: H.time[i], ws: H.wind_speed_10m[i], wg: H.wind_gusts_10m[i], wd: H.wind_direction_10m[i], code: H.weather_code[i] }); }
+  const maxV = Math.max(wxWarn() + 10, ...pts.map(p => p.wg || 0));
+  const top = Math.ceil(maxV / 20) * 20;
+  const x = j => L + pw * j / (n - 1), y = v => T + ph * (1 - v / top);
+  let svg = `<svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="Wind gusts and average wind for the next ${n} hours">`;
+  for(let v = 0; v <= top; v += 20){ svg += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--body)">${v}</text>`; }
+  // day lines + labels
+  pts.forEach((p, j) => { if(p.t.slice(11,13) === "00" && j > 0){ svg += `<line x1="${x(j)}" x2="${x(j)}" y1="${T}" y2="${T+ph}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 3"/>`; } });
+  const dayStarts = [0]; pts.forEach((p, j) => { if(j > 0 && p.t.slice(11,13) === "00") dayStarts.push(j); });
+  dayStarts.forEach((j0, d) => { const j1 = d + 1 < dayStarts.length ? dayStarts[d+1] : n - 1; if(j1 - j0 >= 4) svg += `<text x="${(x(j0)+x(j1))/2}" y="${Ht-6}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--muted)" font-family="var(--body)">${nice(pts[j0].t.slice(0,10))}</text>`; });
+  // your shifts: coloured strip under the plot
+  const SH_COL = { D:"var(--day)", E:"var(--eve)", N:"var(--night)", I:"var(--irr)" };
+  for(let k = add(pts[0].t.slice(0,10), -1); k <= pts[n-1].t.slice(0,10); k = add(k,1)){
+    const sh = wxShiftOn(k); if(!sh) continue; const w = wxWindow(k, sh.type, sh.ext); if(!w) continue;
+    const sIdx = H.time.indexOf(w[0] + "T" + pad(w[1]) + ":00") - iNow; if(sIdx + w[2] < 0 || sIdx > n - 1) continue;
+    const a = Math.max(0, sIdx), b = Math.min(n - 1, sIdx + w[2]);
+    svg += `<rect x="${x(a)}" y="${T+ph+6}" width="${Math.max(2, x(b)-x(a))}" height="8" rx="3" fill="${SH_COL[sh.type]}" opacity="${sh.logged ? 1 : .5}"><title>${NAMES[sh.type]} shift ${nice(k)}</title></rect>`;
+  }
+  // average wind: area, gusts: line
+  const area = `M${x(0)},${y(0)} ` + pts.map((p, j) => `L${x(j).toFixed(1)},${y(p.ws||0).toFixed(1)}`).join(" ") + ` L${x(n-1)},${y(0)} Z`;
+  svg += `<path d="${area}" fill="var(--wxa)" opacity=".28"/><path d="${pts.map((p, j) => (j ? "L" : "M") + x(j).toFixed(1) + "," + y(p.ws||0).toFixed(1)).join(" ")}" fill="none" stroke="var(--wxa)" stroke-width="2" stroke-linejoin="round"/>`;
+  svg += `<path d="${pts.map((p, j) => (j ? "L" : "M") + x(j).toFixed(1) + "," + y(p.wg||0).toFixed(1)).join(" ")}" fill="none" stroke="var(--wxg)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  // warning line
+  svg += `<line x1="${L}" x2="${W-R}" y1="${y(wxWarn())}" y2="${y(wxWarn())}" stroke="var(--ph)" stroke-width="2" stroke-dasharray="6 5"/><text x="${W-R-2}" y="${y(wxWarn())-5}" text-anchor="end" font-size="11" font-weight="600" fill="var(--ph)" font-family="var(--body)">${wxWarn()} km/h</text>`;
+  // storms
+  pts.forEach((p, j) => { if(wxStormCode(p.code) && (j === 0 || !wxStormCode(pts[j-1].code))) svg += `<text x="${x(j)}" y="${T-6}" text-anchor="middle" font-size="13">⚡</text>`; });
+  // peak gust label
+  let pk = 0; pts.forEach((p, j) => { if((p.wg||0) > (pts[pk].wg||0)) pk = j; });
+  svg += `<circle cx="${x(pk)}" cy="${y(pts[pk].wg)}" r="4" fill="var(--wxg)" stroke="var(--surface)" stroke-width="2"/><text x="${Math.min(W-R-30, Math.max(L+30, x(pk)))}" y="${y(pts[pk].wg)-9}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)" font-family="var(--body)">${Math.round(pts[pk].wg)}</text>`;
+  // hover / touch layer
+  svg += `<line id="wxCross" x1="0" x2="0" y1="${T}" y2="${T+ph}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><circle id="wxDot" r="5" fill="var(--wxg)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  svg += `<rect id="wxHit" x="${L}" y="0" width="${pw}" height="${Ht}" fill="transparent"/></svg><div class="wxTip" id="wxTip" hidden></div>`;
+  box.innerHTML = svg;
+  const svgEl = box.querySelector("svg"), tip = $("wxTip"), cross = $("wxCross"), dot = $("wxDot");
+  const show = ev => {
+    const r = svgEl.getBoundingClientRect(), cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const j = Math.max(0, Math.min(n - 1, Math.round(((cx * W / r.width) - L) / pw * (n - 1)))), p = pts[j];
+    cross.setAttribute("x1", x(j)); cross.setAttribute("x2", x(j)); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(j)); dot.setAttribute("cy", y(p.wg||0)); dot.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    tip.innerHTML = `<b>${nice(p.t.slice(0,10))} ${wxHourLabel(Number(p.t.slice(11,13)))}</b><br>Gusts ${Math.round(p.wg)} km/h · average ${Math.round(p.ws)}<br>From the ${wxFrom(p.wd)}${wxStormCode(p.code) ? " · ⚡ storm" : ""}`;
+    const px = x(j) * r.width / W, tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(r.width - tw, px - tw / 2)) + "px";
+  };
+  const hide = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+  const hit = $("wxHit");
+  hit.addEventListener("mousemove", show); hit.addEventListener("touchstart", show, {passive:true}); hit.addEventListener("touchmove", show, {passive:true});
+  hit.addEventListener("mouseleave", hide); hit.addEventListener("touchend", () => setTimeout(hide, 2500));
+}
+$("wxRefresh").onclick = () => loadWx(true);
+$("wxWarn").onchange = e => { const v = Math.round(Number(e.target.value)); if(v >= 10 && v <= 200){ S.settings.windWarn = v; persist(); renderWx(); renderMonth(); } else e.target.value = wxWarn(); };
+setInterval(() => { if(!document.hidden) loadWx(false); }, 10*60e3);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) loadWx(false); });
+
 /* ============ SHIP MOVEMENTS (berths 10–12) ============ */
 // A GitHub Action copies the Port Authority's Port Botany movements every 15 minutes into vessels.json.
 const SHIPS_URL = "https://raw.githubusercontent.com/shipwreckbay123/pbt-shifts/data/vessels.json";
@@ -1618,7 +1856,7 @@ function renderSetup(){
      <tr><td>VSE minimum salary / year</td><td class="r" colspan="2">${money(st.min,2)}</td></tr>`;
 }
 
-function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); renderShips(); }
+function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); renderShips(); renderWx(); }
 
 /* ============ DAY SHEET ============ */
 function openSheet(k){
@@ -1658,6 +1896,7 @@ function syncSheet(){
   document.querySelectorAll("#shJob button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.job === draft.job)));
   $("shExGrade").hidden = !draft.ext;
   $("shSub").textContent = draft.type && TIMES[draft.type] ? timesFor(sheetDay, draft.type) + holNote(sheetDay, draft.type) : (draft.type==="I" ? "You'll find out the day before. Change it once you're allocated." : draft.type==="L" ? "Self-funded RDO you booked. Paid as VSE LVE PD from your VSE PAID bank." : draft.type==="S" ? "Personal/carer's leave. Uses 7 hours of your sick leave balance." : draft.type==="X" ? "Scratched in Microster. Not paid, and doesn't count toward six in a row." : draft.type==="A" ? "Annual leave. Uses 7 hours of your annual leave balance." : draft.type==="U" ? "You were available but not given a shift. Not paid; counts toward your minimum salary check." : "Pick a shift");
+  $("shWx").innerHTML = wxSheetLine(sheetDay, draft.type, draft.ext);
   const dt = $("shDayType").value;
   const c = paid ? calcShift(sheetDay, {...draft, hol: dt}) : null;
   const lp = Number(S.settings.leavePay)||0;
@@ -2483,6 +2722,7 @@ syncFill();
 connect().then(maybeAskPanel);
 renderInstall();
 loadShips(true);
+loadWx(false);
 $("shipRefresh").onclick = () => loadShips(true);
 document.addEventListener("visibilitychange", () => { if(!document.hidden) loadShips(false); });
 setInterval(() => { if(!document.hidden) loadShips(false); }, 10*60000);
