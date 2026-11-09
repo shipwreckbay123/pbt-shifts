@@ -197,7 +197,16 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .seg button.sS[aria-pressed="true"]{background:var(--sick);color:#fff;border-color:var(--sick)}
 .seg button.sA[aria-pressed="true"]{background:var(--annual);color:#fff;border-color:var(--annual)}
 .seg button.sX[aria-pressed="true"]{background:#4b5864;color:#fff;border-color:#4b5864}
-.scrbar{font-size:12px;opacity:.9;margin-top:4px}
+.scrbar{font-size:12px;margin-top:10px;opacity:1!important;color:#fff}
+.scrTop{display:flex;align-items:center;gap:10px}
+.scrNum{font:700 40px/1 var(--display);min-width:44px;text-align:center;color:#fff}
+.scrNum.warn{color:#ffcf6b}.scrNum.over{color:#ff8a8a}
+.scrTxt{font-size:12px;line-height:1.35;opacity:.92}
+.scrTxt b{font-size:15px;font-weight:600;opacity:1}
+.scrBarTrack{height:9px;border-radius:6px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:8px}
+.scrBarTrack i{display:block;height:100%;border-radius:6px;background:#4cc38a}
+.scrBarTrack i.warn{background:#ffcf6b}.scrBarTrack i.over{background:#ff8a8a}
+.scrOver{margin-top:6px;font-weight:600;color:#ff8a8a}
 #shJob button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
 .scrbar b.warn{color:#ffcf6b}.scrbar b.over{color:#ff8a8a}
 .stepper{display:flex;align-items:center;gap:8px}
@@ -1146,9 +1155,14 @@ function chipHTML(sh, k){
 /* ---------- Summary (header) ---------- */
 function renderScrBar(){
   const st = scrPeriodStart(todayKey()), n = scrCount(st);
-  const cls = n > SCR_LIMIT ? "over" : n >= 22 ? "warn" : "";
-  $("scrBar").innerHTML = `Scratches: <b class="${cls}">${n} of ${SCR_LIMIT}</b>` + (n > SCR_LIMIT ? " · over the limit: no minimum salary this period" : ` · ${SCR_LIMIT-n} left`) + ` · resets ${nice(add(st,28))}`
-;
+  // Big "left" number + a bar that fills as you use them: green, amber at 5 or fewer left, red at none left / over.
+  const left = SCR_LIMIT - n, cls = left < 0 ? "over" : left === 0 ? "over" : left <= 5 ? "warn" : "ok";
+  const pct = Math.min(100, n / SCR_LIMIT * 100);
+  $("scrBar").innerHTML = `<div class="scrTop"><span class="scrNum ${cls}">${left < 0 ? "+" + (-left) : left}</span>
+      <span class="scrTxt"><b>${left < 0 ? "scratches over the limit" : left === 1 ? "scratch left" : "scratches left"}</b><br>
+      ${n} of ${SCR_LIMIT} used · resets ${nice(add(st,28))}</span></div>
+    <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
+    ${left < 0 ? `<div class="scrOver">Over the limit: no minimum salary this period</div>` : ""}`;
 }
 // Six in a row, at a glance: how long your current run is, and the next forced day off coming up.
 function sixLine(){
