@@ -635,6 +635,12 @@ details.imp .btn{min-height:40px;font-size:14px}
         <div class="small muted">Your payslips show 7h × $55.50 = $388.51.</div></div>
     </div>
 
+    <h2>Job grades</h2>
+    <div class="card stack">
+      <div class="small muted">The grade each job pays when you pick it for a shift. Grades come from the EBA (Part B 2.1 and 2.10). Cargo care and refueller aren't graded in the EBA, so check a payslip and change them if they're wrong.</div>
+      <div class="list" id="jobGradeList"></div>
+    </div>
+
     <h2>Holidays</h2>
     <div class="card stack">
       <div class="small muted">NSW public holidays for 2026–27 are loaded. Good Friday, Anzac Day and Labour Day are closed port days. Add Picnic Day yourself once it's set.</div>
@@ -772,8 +778,16 @@ const JOBS = [
   {id:"rtgtug",  name:"RTG + tug",               g:4},
   {id:"fork",    name:"Fork + fork",             g:3},
   {id:"rtgfork", name:"RTG + fork",              g:4},
-  {id:"bus",     name:"Bus",                     g:2}  // Part B 2.1: Bus is Grade 2
+  {id:"bus",     name:"Bus",                     g:2}, // Part B 2.1: Bus is Grade 2
+  {id:"headlash", name:"Head lasher",            g:5}, // Part B 2.10.3: lashing gang with no Foreman, G5 for the shift
+  {id:"crane",   name:"Crane driver",            g:5}, // Part B 2.1: Crane Driver G5
+  {id:"tldeck",  name:"Team leader / deck",      g:5}, // Part B 2.1: Crane Foreperson G5
+  {id:"ctrl",    name:"Controller",              g:5}, // Part B 2.1: Controller G5
+  {id:"cargo",   name:"Cargo care",              g:4, unsure:true}, // not graded in the EBA; Award puts reefer monitoring at G4
+  {id:"refuel",  name:"Refueller",               g:3, unsure:true}  // not graded in the EBA; Award puts fuel trucks at G3
 ];
+// A person can change a job's grade in Setup (for jobs the EBA doesn't grade, or if their payslip says otherwise)
+const jobG = j => Number((S.settings.jobGrades || {})[j.id]) || j.g;
 const JOB = id => JOBS.find(j => j.id === id);
 // Hours at each grade for a shift: {2:4, 4:4} etc.
 function gradeHours(g, sh, sg){ g = Number(g)||2; sh = Number(sh)||0; sg = Number(sg)||g; const o = {}; o[g] = (o[g]||0) + 8 - sh; if(sh) o[sg] = (o[sg]||0) + sh; return JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]])); }
@@ -782,13 +796,13 @@ function gradeHours(g, sh, sg){ g = Number(g)||2; sh = Number(sh)||0; sg = Numbe
 // Grade 2 all shift = tug (lash is less common: pick it yourself and it's kept).
 function jobFromPay(g, sh, sg, current){
   const paid = gradeHours(g, sh, sg);
-  if(current && JOB(current)){ const j = JOB(current); if(gradeHours(j.g, j.sh, j.sg) === paid) return current; }
+  if(current && JOB(current)){ const j = JOB(current); if(gradeHours(jobG(j), j.sh, j.sg) === paid) return current; }
   for(const id of ["rtgtug","fork","lashwt","lashfwt","rtgfork"]){ const j = JOB(id); if(gradeHours(j.g, j.sh, j.sg) === paid) return id; }
   if(paid === gradeHours(3, 4, 4) || paid === gradeHours(4, 4, 3)) return "rtgfork";
   if(paid === gradeHours(2, 0, 0)) return "tug";   // Grade 2 all shift: tug unless you've picked lash
   return "";
 }
-const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork",BUS:"bus"};
+const JOB_ALIASES = {TUG:"tug",LASH:"lash",LASHWT:"lashwt","LASH+WT":"lashwt","LASH+RTG":"lashwt",WT:"lashwt",LASHFWT:"lashfwt","LASH+FORK":"lashfwt",FWT:"lashfwt",RTGTUG:"rtgtug","RTG+TUG":"rtgtug","FORK+FORK":"fork",FORK:"fork",RTGFORK:"rtgfork","RTG+FORK":"rtgfork",BUS:"bus",HEADLASH:"headlash",HEADLASHER:"headlash",HL:"headlash",CRANE:"crane",QC:"crane",TL:"tldeck",DECK:"tldeck",TLDECK:"tldeck","TL/DECK":"tldeck",CONTROLLER:"ctrl",CTRL:"ctrl",CARGO:"cargo",CARGOCARE:"cargo",CC:"cargo",REFUEL:"refuel",REFUELLER:"refuel",REFUELER:"refuel",FUEL:"refuel"};
 const LETTER = t => t==="L" ? "RDO" : t==="X" ? "SC" : t==="A" ? "AL" : t==="U" ? "LO" : t;
 const PANEL_SHORT = {D:"day",E:"eve",N:"ngt",I:"irr"};
 // Panel cycle: from your payslips the blocks run Tuesday to Monday, repeating
@@ -1947,7 +1961,13 @@ document.addEventListener("click", async e => {
   const c = e.target.closest("[data-copy]"); if(!c) return;
   try { await navigator.clipboard.writeText(c.dataset.copy); toast("Link copied"); } catch(err){ toast("Press and hold the link to copy it"); }
 });
+function renderJobGrades(){
+  const el = $("jobGradeList"); if(!el || el.contains(document.activeElement)) return;
+  el.innerHTML = JOBS.filter(j => !j.sh).map(j => `<div class="li" style="grid-template-columns:1fr auto"><div><div class="t">${esc(j.name)}</div>${j.unsure ? `<div class="s" style="color:var(--ph)">Grade not in the EBA, check your payslip</div>` : ""}</div>
+    <select data-jobg="${j.id}" aria-label="Grade for ${esc(j.name)}" style="width:auto;min-height:40px">${[2,3,4,5,6].map(g => `<option value="${g}"${g === jobG(j) ? " selected" : ""}>Grade ${g}${g === j.g && (S.settings.jobGrades||{})[j.id] ? " (default)" : ""}</option>`).join("")}</select></div>`).join("");
+}
 function renderSetup(){
+  renderJobGrades();
   const gOpts = [1,2,3,4,5,6].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
   $("setGrade").innerHTML = gOpts; $("setGrade").value = S.settings.grade;
   $("shGrade").innerHTML = gOpts; $("shSplitGrade").innerHTML = gOpts; $("shExGrade").innerHTML = gOpts.replace(/Grade /g,"at Grade ");
@@ -2124,8 +2144,8 @@ $("shGrade").onchange = e => { delete draft.job; draft.grade = Number(e.target.v
 $("shJob").innerHTML = JOBS.map(j => `<button type="button" data-job="${j.id}" aria-pressed="false">${j.name}</button>`).join("");
 document.querySelectorAll("#shJob button").forEach(b => b.onclick = () => {
   const j = JOB(b.dataset.job); if(!j) return;
-  draft.job = j.id; draft.grade = j.g; draft.splitH = j.sh || 0; if(j.sh) draft.splitGrade = j.sg; else delete draft.splitGrade;
-  $("shGrade").value = j.g; if(j.sg) $("shSplitGrade").value = j.sg; $("shSplitBox").open = !!j.sh;
+  draft.job = j.id; draft.grade = jobG(j); draft.splitH = j.sh || 0; if(j.sh) draft.splitGrade = j.sg; else delete draft.splitGrade;
+  $("shGrade").value = jobG(j); if(j.sg) $("shSplitGrade").value = j.sg; $("shSplitBox").open = !!j.sh;
   if(!draft.exGrade) $("shExGrade").value = j.g;
   syncSheet();
 });
@@ -2188,6 +2208,12 @@ $("setPanelCycle").onchange = e => { S.settings.panelCycle = e.target.value.toUp
 $("panelBtns").onclick = e => { const b = e.target.closest("[data-panel]"); if(!b) return; setPanel(Number(b.dataset.panel)); toast(`Panel ${b.dataset.panel} is on your calendar`); };
 for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
   $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
+$("jobGradeList").onchange = e => { const id = e.target.dataset.jobg; if(!id) return; const j = JOB(id), g = Number(e.target.value);
+  const old = jobG(j);
+  S.settings.jobGrades = { ...(S.settings.jobGrades || {}) }; if(g === j.g) delete S.settings.jobGrades[id]; else S.settings.jobGrades[id] = g;
+  let n = 0;   // shifts already logged with this job at the old grade move to the new one
+  for(const k in S.shifts){ const sh = S.shifts[k]; if(sh.job === id && Number(sh.grade) === old){ sh.grade = g; n++; } }
+  persist(); renderAll(); toast(`${j.name} is now Grade ${g}` + (n ? ` · ${n} shift${n > 1 ? "s" : ""} updated` : "")); };
 $("holAdd").onclick = () => { const k = $("holDate").value; if(!k){ toast("Pick a date"); return; } S.hols[k] = $("holType").value; persist(); renderAll(); toast("Holiday added"); };
 
 // fill tool
@@ -2607,7 +2633,7 @@ function parsePasted(text){
       else if(JOB_ALIASES[tok.toUpperCase()]) r.job = JOB_ALIASES[tok.toUpperCase()];
       else if(type === "X" && /^[DEN]{1,3}$/i.test(tok)) r.scr = [...new Set(tok.toUpperCase())].join("");
     }
-    if(r.job){ const j = JOB(r.job); if(r.grade === undefined) r.grade = j.g; if(j.sh && r.splitH === undefined){ r.splitH = j.sh; r.splitGrade = j.sg; } }
+    if(r.job){ const j = JOB(r.job); if(r.grade === undefined) r.grade = jobG(j); if(j.sh && r.splitH === undefined){ r.splitH = j.sh; r.splitGrade = j.sg; } }
     rows.push(r);
   }
   // "ALW" = annual leave for the whole Mon–Sun week (Sat/Sun not paid separately)
