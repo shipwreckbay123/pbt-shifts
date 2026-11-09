@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@800;900&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* Plan: harbour navy + steel neutrals, hi-vis amber accent; shift colours do the talking.
    Layout: one phone-width column, summary on top, tabs at the bottom. */
@@ -35,14 +35,14 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0b1a3c; --surface:#14254f; --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
+    --bg:#0b1a3c; --surface:rgba(20,37,79,.86); --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
     --navy:#0b1a3c; --accent:#00f0a0; --mint-soft:#0f3a4f; --mint-line:#1f8f78; --pink-soft:#3a2152; --pink-line:#a85bc8; --pink:#f08ae0; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
     --sch:#16302a; --sch-line:#3fb07a; --cpd:#4f8fd6;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0b1a3c; --surface:#14254f; --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
+  --bg:#0b1a3c; --surface:rgba(20,37,79,.86); --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
   --navy:#0b1a3c; --accent:#00f0a0; --mint-soft:#0f3a4f; --mint-line:#1f8f78; --pink-soft:#3a2152; --pink-line:#a85bc8; --pink:#f08ae0; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
   --sch:#16302a; --sch-line:#3fb07a; --cpd:#4f8fd6;
   color-scheme: dark;
@@ -52,17 +52,30 @@
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
 label.btn[aria-disabled="true"]{opacity:.55;pointer-events:none}
 html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased;position:relative}
+/* Amber-style glow: green top right, blue middle, purple and pink bottom left. Fixed behind everything. */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:var(--glow)}
+:root{--glow:radial-gradient(90% 45% at 100% 0%, rgba(0,230,154,.30), transparent 70%), radial-gradient(70% 40% at 100% 55%, rgba(42,160,255,.22), transparent 70%), radial-gradient(80% 45% at 0% 100%, rgba(245,142,240,.30), transparent 70%), radial-gradient(60% 35% at 0% 40%, rgba(150,90,255,.16), transparent 70%), var(--bg)}
+:root[data-theme="dark"]{--glow:radial-gradient(100% 50% at 100% 0%, rgba(0,200,150,.42), transparent 70%), radial-gradient(70% 40% at 100% 55%, rgba(30,120,255,.28), transparent 70%), radial-gradient(90% 50% at 0% 100%, rgba(200,70,220,.34), transparent 70%), radial-gradient(60% 35% at 0% 40%, rgba(110,60,220,.24), transparent 70%), #0b1a3c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--glow:radial-gradient(100% 50% at 100% 0%, rgba(0,200,150,.42), transparent 70%), radial-gradient(70% 40% at 100% 55%, rgba(30,120,255,.28), transparent 70%), radial-gradient(90% 50% at 0% 100%, rgba(200,70,220,.34), transparent 70%), radial-gradient(60% 35% at 0% 40%, rgba(110,60,220,.24), transparent 70%), #0b1a3c}}
+html{background:var(--bg)}
+body{background:transparent}
 button,select,input{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:540px;margin:0 auto;padding:0 16px 96px}
 
-header.top{background:var(--navy);color:#fff;padding:14px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+header.top{background:var(--navy);color:#fff;padding:14px 16px 16px}
+:root[data-theme="dark"] header.top{background:transparent}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header.top{background:transparent}}
 header.top .row{max-width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
-header.top h1 span{color:var(--accent)}
+.brand{display:flex;align-items:stretch;gap:10px}
+.brandT{display:flex;flex-direction:column;font:900 34px/.9 "Archivo", var(--display) !important;letter-spacing:-.01em !important}
+.brandT span:first-child{color:#fff}.brandT span:last-child{color:var(--accent)}
+.brandA{height:61px;width:52px;flex:none}
+#sync{display:none !important}   /* "Saved on this phone" pill removed (Hemi) */
 /* Microster link, saved pill, take-home summary and scratches only show on the Calendar tab */
 body[data-tab]:not([data-tab="cal"]) header.top .mslink, body[data-tab]:not([data-tab="cal"]) #sync,
 body[data-tab]:not([data-tab="cal"]) #summary, body[data-tab]:not([data-tab="cal"]) #summarySub, body[data-tab]:not([data-tab="cal"]) #scrBar{display:none}
@@ -197,7 +210,7 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .seg button.sS[aria-pressed="true"]{background:var(--sick);color:#fff;border-color:var(--sick)}
 .seg button.sA[aria-pressed="true"]{background:var(--annual);color:#fff;border-color:var(--annual)}
 .seg button.sX[aria-pressed="true"]{background:#4b5864;color:#fff;border-color:#4b5864}
-.scrbar{font-size:12px;margin-top:10px;opacity:1!important;color:#fff}
+.scrbar{font-size:12px;margin-top:14px;opacity:1!important;color:#fff}
 .scrTop{display:flex;align-items:center;gap:10px}
 .scrNum{font:700 40px/1 var(--display);min-width:44px;text-align:center;color:#fff}
 .scrNum.warn{color:#ffcf6b}.scrNum.over{color:#ff8a8a}
@@ -207,11 +220,27 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .scrBarTrack i{display:block;height:100%;border-radius:6px;background:#00f0a0}
 .scrBarTrack i.warn{background:#ffcf6b}.scrBarTrack i.over{background:#ff8a8a}
 .scrOver{margin-top:6px;font-weight:600;color:#ff8a8a}
-.lvTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
-.lvT{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;background:rgba(255,255,255,.08);border-radius:10px;padding:9px 6px;min-width:0}
-.lvN{font:700 26px/1 var(--display);color:#fff}
-.lvL{font-size:12px;line-height:1.2;font-weight:600}
-.lvL small{font-weight:400;opacity:.8;font-size:11px}
+
+/* Amber "Your week" style cards: dark glass, white condensed heading, big yellow or pink numbers */
+.amb{position:relative;border-radius:18px;padding:16px;color:#fff;border:2px solid #0c1a40;
+  background:linear-gradient(165deg, rgba(14,48,74,.86) 0%, rgba(52,46,58,.84) 55%, rgba(78,42,88,.86) 100%);box-shadow:0 6px 18px rgba(5,10,30,.25)}
+.ambTag{display:inline-block;font:700 19px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#0c1a40;padding:7px 12px;border-radius:7px;
+  border:3px solid transparent;background:linear-gradient(#fff,#fff) padding-box, linear-gradient(100deg,#00f0a0,#2ad4ff 45%,#f58ef0) border-box}
+.ambLbl{font:700 19px/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#fff}
+.ambSub{font-size:13px;color:rgba(255,255,255,.85);margin-top:8px}
+.ambBig{font:900 54px/1 "Archivo", var(--display);letter-spacing:-.01em;margin-top:6px}
+.ambMid{font:900 30px/1 "Archivo", var(--display);letter-spacing:-.01em;margin-top:4px}
+.ambY{color:#ffc21a}.ambP{color:#f58ef0}
+.ambY.warn{color:#ff9b3d}.ambY.over{color:#ff6f8e}
+.ambUnit{font:500 22px var(--body);margin-left:6px;letter-spacing:.04em}
+.ambChip{display:inline-block;font:700 15px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;padding:6px 10px;border-radius:7px;border:2px solid #f58ef0;color:#f58ef0;margin-top:10px}
+.ambChip.ok{border-color:#00f0a0;color:#00f0a0}.ambChip.over{background:#ff6f8e;border-color:#ff6f8e;color:#1a0b2a}
+.amb2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.ambNote{font-size:12px;color:rgba(255,255,255,.7);margin-top:12px}
+.lvTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.lvT{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 12px;border-radius:14px;min-width:0}
+.lvL{font-size:12px;color:rgba(255,255,255,.75)}
+.scrCard .scrBarTrack{margin-top:12px}
 .lvNone{grid-column:1/-1;font-size:12px;opacity:.85}
 #shJob button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
 .scrbar b.warn{color:#ffcf6b}.scrbar b.over{color:#ff8a8a}
@@ -327,7 +356,9 @@ details.imp .btn{min-height:40px;font-size:14px}
 <header class="top">
   <div class="row">
     <div class="lead">
-      <h1>PBT <span>Shifts</span> &amp; Pay</h1>
+      <div class="brand"><h1 class="brandT"><span>PBT</span><span>VSE</span></h1>
+        <svg class="brandA" viewBox="0 0 48 56" aria-hidden="true"><defs><linearGradient id="anG" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="48" y2="56"><stop offset="0" stop-color="#00f0a0"/><stop offset=".5" stop-color="#2ad4ff"/><stop offset="1" stop-color="#f58ef0"/></linearGradient></defs>
+          <g fill="none" stroke="url(#anG)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="8" r="5"/><path d="M24 13v38"/><path d="M13 22h22"/><path d="M5 34c1 10 9 17 19 17s18-7 19-17"/><path d="M2 38l3-5 5 3M46 38l-3-5-5 3"/></g></svg></div>
       <a class="mslink" href="https://dpw.portal.tamblawfm.net/Microster.SelfService/Default.aspx" target="_blank" rel="noopener">Microster ↗</a>
     </div>
     <span id="sync" class="pill">Loading…</span>
@@ -1163,11 +1194,16 @@ function renderScrBar(){
   // Big "left" number + a bar that fills as you use them: green, amber at 5 or fewer left, red at none left / over.
   const left = SCR_LIMIT - n, cls = left < 0 ? "over" : left === 0 ? "over" : left <= 5 ? "warn" : "ok";
   const pct = Math.min(100, n / SCR_LIMIT * 100);
-  $("scrBar").innerHTML = `<div class="scrTop"><span class="scrNum ${cls}">${left < 0 ? "+" + (-left) : left}</span>
-      <span class="scrTxt"><b>${left < 0 ? "scratches over the limit" : left === 1 ? "scratch left" : "scratches left"}</b><br>
-      ${n} of ${SCR_LIMIT} used · resets ${nice(add(st,28))}</span></div>
-    <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
-    ${left < 0 ? `<div class="scrOver">Over the limit: no minimum salary this period</div>` : ""}
+  $("scrBar").innerHTML = `<div class="amb scrCard">
+      <div class="ambLbl">Scratches left</div>
+      <div class="ambBig ambY ${cls === "ok" ? "" : cls}">${left < 0 ? "+" + (-left) : left}</div>
+      <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
+      <div class="amb2">
+        <div><div class="ambLbl" style="font-size:15px">Used</div><div class="ambMid ambY">${n}<span class="ambUnit" style="font-size:15px">of ${SCR_LIMIT}</span></div></div>
+        <div><div class="ambLbl" style="font-size:15px">Resets</div><div class="ambMid ambY" style="font-size:24px">${nice(add(st,28))}</div></div>
+      </div>
+      ${left < 0 ? `<div class="ambChip over">Over the limit: no minimum salary this period</div>` : ""}
+    </div>
     ${leaveTiles()}`;
 }
 // Six in a row, at a glance: how long your current run is, and the next forced day off coming up.
@@ -1437,19 +1473,25 @@ function avgShiftGross(){
 function renderEofy(){
   const fyE = fyEnd(todayKey()), fc = fyForecast(fyE), card = $("eofyCard"), al = $("taxAlarm");
   if(!fc){
-    card.innerHTML = `<div class="lbl">Predicted wages to 30 June ${fyE}</div><div class="small muted" style="margin-top:6px">Add a payslip or log a fortnight of shifts and your predicted wages for the year show here.</div>`;
+    card.className = "amb eofy";
+    card.innerHTML = `<span class="ambTag">Predicted wages</span><div class="ambSub">Add a payslip or log a fortnight of shifts and your predicted wages to 30 June ${fyE} show here.</div>`;
     al.hidden = true; return;
   }
   const room = TOP_LINE - fc.taxable, lvl = room <= 0 ? "over" : room <= TOP_WARN ? "warn" : "";
   const pct = Math.min(100, fc.taxable / TOP_LINE * 100), shiftG = avgShiftGross();
-  card.className = "card eofy " + (fc.taxable > TOP_LINE ? "hot" : "calm");   // pastel yellow, pastel red once predicted over $190k
+  card.className = "amb eofy";
   al.hidden = true; al.innerHTML = "";   // the big amber alarm is off for now (Hemi's trial)
-  card.innerHTML = `<div class="lbl">Predicted wages to 30 June ${fyE}</div>
-    <div class="big num" style="margin-top:4px">${money(fc.gross,0)}</div>
-    <div class="small muted num">Tax about ${money(fc.tax,0)} · super about ${money(fc.sup,0)}</div>
-    <div class="bar" role="img" aria-label="${Math.round(pct)}% of the way to the 47% tax line"><i class="${lvl}" style="width:${pct}%"></i></div>
-    <div class="small num" style="margin-top:6px">Taxable about ${money(fc.taxable,0)} · ${room > 0 ? `<b>${money(room,0)}</b> under the 47% tax line ($190,000)` : `<b style="color:var(--ph)">${money(-room,0)} over</b> the 47% tax line`}</div>
-    <div class="small muted" style="margin-top:4px">Based on ${fc.known} pay${fc.known===1?"":"s"} so far and your recent average for the rest. Full breakdown on the Year tab.</div>`;
+  card.innerHTML = `<span class="ambTag">Predicted wages</span>
+    <div class="ambSub">What you're on track to earn by 30 June ${fyE}, from ${fc.known} pay${fc.known===1?"":"s"} so far and your recent average for the rest.</div>
+    <div class="ambLbl" style="margin-top:14px">Wages to 30 June</div>
+    <div class="ambBig ambP num">${money(fc.gross,0)}</div>
+    <div><span class="ambChip num">Taxable ${money(fc.taxable,0)}</span></div>
+    <div><span class="ambChip num ${room > 0 ? "ok" : "over"}">${room > 0 ? `${money(room,0)} under the 47% tax line` : `${money(-room,0)} over the 47% tax line`}</span></div>
+    <div class="amb2">
+      <div><div class="ambLbl" style="font-size:16px">Tax about</div><div class="ambMid ambP num">${money(fc.tax,0)}</div></div>
+      <div><div class="ambLbl" style="font-size:16px">Super about</div><div class="ambMid ambP num">${money(fc.sup,0)}</div></div>
+    </div>
+    <div class="ambNote">The 47% line is $190,000 taxable. Full breakdown on the Year tab.</div>`;
 }
 // Upgrades: shifts (or part shifts) paid above your usual grade, from what you've logged as worked.
 function upgradeStats(from, to){
@@ -1521,8 +1563,8 @@ function leaveNow(){
 }
 function leaveTiles(){
   const L = leaveNow();
-  if(!L) return `<div class="lvTiles"><div class="lvT lvNone">Add a payslip to see your RDOs, sick days and holidays left</div></div>`;
-  const tile = (label, h) => `<div class="lvT"><span class="lvN">${h === null ? "–" : (Math.round(h/7*10)/10).toLocaleString("en-AU")}</span><span class="lvL">${label}<br><small>${h === null ? "not on payslip" : "days left"}</small></span></div>`;
+  if(!L) return `<div class="lvTiles"><div class="amb lvT lvNone">Add a payslip to see your RDOs, sick days and holidays left</div></div>`;
+  const tile = (label, h) => `<div class="amb lvT"><div class="ambLbl" style="font-size:16px">${label}</div><div class="ambMid ambY">${h === null ? "–" : (Math.round(h/7*10)/10).toLocaleString("en-AU")}</div><div class="lvL">${h === null ? "not on payslip" : "days left"}</div></div>`;
   return `<div class="lvTiles">${tile("RDOs", L.rdo)}${tile("Sick", L.sick)}${tile("Holidays", L.ann)}</div>`;
 }
 function renderLeave(){
