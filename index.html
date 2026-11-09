@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PBT Shifts &amp; Pay</title>
-<meta name="theme-color" content="#12324f">
+<title>PBT VSE</title>
+<meta name="theme-color" content="#0c1a40">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="PBT Shifts">
+<meta name="apple-mobile-web-app-title" content="PBT VSE">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -191,6 +191,9 @@ tr.total td{font-weight:600;border-bottom:0}
 .mini .c.D{background:var(--day)}.mini .c.E{background:var(--eve)}.mini .c.N{background:var(--night)}
 .mini .c.I{background:var(--irr)}.mini .c.L{background:var(--leave)}.mini .c.S{background:var(--sick)}.mini .c.A{background:var(--annual)}.mini .c.U{background:transparent;outline:1.5px dotted #b08850}.mini .c.X{background:repeating-linear-gradient(135deg,#5d6b78 0 2px,#8795a1 2px 4px)}.mini .c.O{background:transparent;outline:1px solid var(--line)}
 .mini .c.plan{opacity:.45}
+/* 6 and out: forced 7th day off, solid navy with a "6" */
+.mini .c.six,.legend i.six{background:var(--ink);color:var(--surface);font:800 9px/1 var(--body);display:flex;align-items:center;justify-content:center;opacity:1}
+.legend i.six{display:inline-flex;font-size:10px}
 .mini .c.ph{box-shadow:inset 0 0 0 1.5px var(--ph)}.mini .c.cpd{box-shadow:inset 0 0 0 1.5px var(--cpd)}
 
 /* forms */
@@ -340,6 +343,12 @@ details.imp .btn{min-height:40px;font-size:14px}
 .ship.mine{background:color-mix(in srgb, var(--good) 12%, transparent);border-radius:8px;padding-left:6px;padding-right:6px}
 .ship .mt{display:inline-block;margin-top:3px;font:700 11px/1 var(--body);padding:3px 6px;border-radius:99px;background:var(--good);color:#fff}
 .ship.past{opacity:.5}
+.shipDrop{border-top:1px solid var(--line);padding-top:12px}
+.shipDrop > summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:28px}
+.shipDrop > summary::-webkit-details-marker{display:none}
+.shipDrop > summary::after{content:"";width:8px;height:8px;margin-right:6px;border-right:2.5px solid currentColor;border-bottom:2.5px solid currentColor;transform:rotate(45deg) translateY(-3px);transition:transform .15s}
+.shipDrop[open] > summary::after{transform:rotate(-135deg) translateY(-1px)}
+.shipDrop[open] > .list{margin-top:6px}
 .eofy .big{font:700 34px/1.1 var(--display)}
 .eofy.calm{background:var(--mint-soft);border-color:var(--mint-line)}
 .eofy.hot{background:var(--pink-soft);border-color:var(--pink-line)}
@@ -489,6 +498,7 @@ details.imp .btn{min-height:40px;font-size:14px}
       <span><i style="background:var(--leave)"></i>RDO</span>
       <span><i style="background:var(--sick)"></i>Sick</span>
       <span><i style="background:var(--annual)"></i>Annual leave</span>
+      <span><i class="six">6</i>6 and out</span>
       <span><i style="border:2px dotted #b08850"></i>Left off</span>
       <span><i style="background:repeating-linear-gradient(135deg,#5d6b78 0 3px,#8795a1 3px 6px)"></i>Scratch</span>
       <span><i style="box-shadow:inset 0 0 0 2px var(--ph)"></i>Public holiday</span>
@@ -504,15 +514,15 @@ details.imp .btn{min-height:40px;font-size:14px}
       <summary>Ships at DP World · berths 10–12</summary>
       <div class="stack" style="margin-top:10px">
         <div class="small muted" id="shipUpd">Loading ship times…</div>
-        <details id="shipDockBox">
-          <summary class="small" style="cursor:pointer;font-weight:600">At berth now</summary>
-          <div class="list" id="shipDock" style="margin-top:6px"></div>
+        <div class="shipHead" id="shipDockHead">At berth now</div>
+        <div class="list" id="shipDock"></div>
+        <details id="shipOutBox" class="shipDrop">
+          <summary class="shipHead">Leaving</summary>
+          <div class="list" id="shipOut"></div>
         </details>
-        <div class="shipHead">Leaving</div>
-        <div class="list" id="shipOut"></div>
-        <details id="shipInBox">
-          <summary class="small" style="cursor:pointer;font-weight:600">Arriving</summary>
-          <div class="list" id="shipIn" style="margin-top:6px"></div>
+        <details id="shipInBox" class="shipDrop">
+          <summary class="shipHead">Arriving</summary>
+          <div class="list" id="shipIn"></div>
         </details>
         <div class="btns"><button class="btn" id="shipRefresh" type="button">Refresh</button></div>
         <div class="small muted">From the Port Authority of NSW <a href="https://www.portauthoritynsw.com.au/port-operations/port-botany/port-botany-daily-vessel-movements" target="_blank" rel="noopener">daily vessel movements</a>. Times change often. The list updates about every 15–30 minutes. "Your shift" means it's due to leave during a shift you've logged.</div>
@@ -1606,7 +1616,8 @@ function renderYear(){
       const sh = S.shifts[k], hol = S.hols[k];
       if(sh && counts[sh.type]) counts[sh.type][sh.status==="worked"?0:1]++;
       const cls = sh ? `${sh.type}${sh.status!=="worked"&&sh.type!=="O"?" plan":""}` : "";
-      cells += `<button class="c ${cls}${hol?(hol==="CPD"?" cpd":" ph"):""}${schoolHol(k)?" sch":""}" data-k="${k}" aria-label="${nice(k)}${sh?" "+NAMES[sh.type]:""}${hol?", "+holName(hol):""}"></button>`;
+      const six = (!sh || sh.type==="O") && sixOut(k);   // same test as the month calendar's 6 & OUT chip
+      cells += `<button class="c ${cls}${six?" six":""}${hol?(hol==="CPD"?" cpd":" ph"):""}${schoolHol(k)?" sch":""}" data-k="${k}" aria-label="${nice(k)}${six?" 6 and out":sh?" "+NAMES[sh.type]:""}${hol?", "+holName(hol):""}">${six?"6":""}</button>`;
     }
     html += `<div class="mini"><h4>${MON[m-1]}${m===1||(m===7&&S.settings.yearMode!=="cal")?` <span class="muted" style="font-weight:500">${yy}</span>`:""}</h4><div class="g">${cells}</div></div>`;
   }
@@ -1653,7 +1664,7 @@ async function loadWx(force){
     try { localStorage.setItem(WX_KEY, JSON.stringify(WX)); } catch(e){}
   } catch(e){
     const inClaude = !!(window.claude && typeof window.claude.use === "function");   // Claude pages can't reach outside sites
-    wxErr = inClaude ? "Weather can't load inside Claude. Open the PBT Shifts app on your phone (the APK) to see it."
+    wxErr = inClaude ? "Weather can't load inside Claude. Open the PBT VSE app on your phone (the APK) to see it."
       : WX ? "Couldn't update just now, showing the last forecast." : "Couldn't load the wind forecast. Check you've got signal, then tap Refresh.";
   }
   wxBusy = false;
@@ -1833,12 +1844,13 @@ function shipOnShift(iso){
   }
   return "";
 }
-function shipRow(m, out){
-  const p = shipParts(m.time) || { k: "", hm: "?" };
-  const tk = todayKey(), day = p.k === tk ? "Today" : p.k === add(tk, 1) ? "Tmrw" : p.k ? D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" }) : "";
-  const mine = out ? shipOnShift(m.time) : "";
-  const past = Date.parse(m.time) < Date.now() - 30*60000;
-  const where = m.type === "Shift" ? "Moving berth" : "";   // no ports: nobody needs where it came from or goes next
+// out: true for a departure (Leaving list, or At berth now with its due-out time). note: grey line under the name.
+function shipRow(m, out, note){
+  const p = shipParts(m.time) || { k: "", hm: "–" };
+  const tk = todayKey(), day = !m.time ? "TBC" : p.k === tk ? "Today" : p.k === add(tk, 1) ? "Tmrw" : p.k ? D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" }) : "";
+  const mine = out && m.time ? shipOnShift(m.time) : "";
+  const past = m.time && Date.parse(m.time) < Date.now() - 30*60000;
+  const where = note || (m.type === "Shift" ? "Moving berth" : "");   // no ports: nobody needs where it came from or goes next
   return `<div class="ship${mine ? " mine" : ""}${past ? " past" : ""}"><div class="st">${esc(p.hm)}<small>${esc(day)}</small></div>
     <div class="sv"><b>${esc(m.vessel)}</b>${where ? `<span class="small muted">${esc(where)}</span>` : ""}${mine ? `<br><span class="mt">Your ${NAMES[mine].toLowerCase()} shift</span>` : ""}</div>
     <span class="bb">B${esc(String(m.berth||"").replace(/\D/g,""))}</span></div>`;
@@ -1854,6 +1866,8 @@ function renderShips(){
   const arriving = moves.filter(m => BERTHS.has(bOf(m.to)) && !BERTHS.has(bOf(m.from)));
   const mins = Math.round((Date.now() - Date.parse(shipData.updated)) / 60000);
   upd.textContent = (shipErr ? shipErr + " " : "") + `Updated ${mins < 1 ? "just now" : mins < 60 ? mins + " min ago" : Math.round(mins/60) + " h ago"}.`;
+  $("shipOutBox").querySelector("summary").textContent = `Leaving (${leaving.length})`;
+  $("shipInBox").querySelector("summary").textContent = `Arriving (${arriving.length})`;
   $("shipOut").innerHTML = leaving.length ? leaving.map(m => shipRow(m, true)).join("") : `<div class="small muted">No ships due to leave berths 10–12 in the next few days.</div>`;
   $("shipIn").innerHTML = arriving.length ? arriving.map(m => shipRow(m, false)).join("") : `<div class="small muted">No ships due in.</div>`;
   // At berth now: the Port Authority marks ships already in port ("In port: Yes") on their departure line;
@@ -1865,11 +1879,11 @@ function renderShips(){
     const dep = all.find(d => d.vessel === m.vessel && bOf(d.from) === b && Date.parse(d.time) > Date.parse(m.time));
     if(!dep || Date.parse(dep.time) > now) dock.set(m.vessel, { vessel: m.vessel, berth: b, out: dep ? dep.time : "" });
   }
-  const docked = [...dock.values()].sort((a, b) => a.berth < b.berth ? -1 : 1);
-  $("shipDockBox").querySelector("summary").textContent = `At berth now (${docked.length})`;
-  $("shipDock").innerHTML = docked.length ? docked.map(d => { const p = shipParts(d.out); const tk = todayKey();
-    const day = p ? (p.k === tk ? "today" : p.k === add(tk, 1) ? "tomorrow" : D(p.k).toLocaleDateString("en-AU", { weekday: "short", timeZone: "UTC" })) : "";
-    return `<div class="ship"><div class="st">B${esc(d.berth.replace(/\D/g,""))}</div><div class="sv"><b>${esc(d.vessel)}</b><span class="small muted">${p ? `Due out ${esc(day)} ${esc(p.hm)}` : "Leaving time not listed yet"}</span></div></div>`; }).join("")
+  // soonest to leave first; same row look as Leaving / Arriving (due-out time on the left, berth chip on the right)
+  const docked = [...dock.values()].sort((a, b) => (a.out ? Date.parse(a.out) : Infinity) - (b.out ? Date.parse(b.out) : Infinity) || (a.berth < b.berth ? -1 : 1));
+  $("shipDockHead").textContent = `At berth now (${docked.length})`;
+  $("shipDock").innerHTML = docked.length
+    ? docked.map(d => shipRow({ vessel: d.vessel, berth: d.berth, time: d.out }, true, d.out ? "Due out" : "Leaving time not listed yet")).join("")
     : `<div class="small muted">No ships at berths 10–12 right now.</div>`;
 }
 async function loadShips(force){
