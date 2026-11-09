@@ -1350,7 +1350,7 @@ function renderPay(){
     <div class="card kpi"><div class="k">Tax (est.)</div><div class="v num">${money(p.tax,2)}</div></div>
     <div class="card kpi"><div class="k">Super (12%)</div><div class="v num">${money(p.superAmt,2)}</div></div>
     <div class="card kpi"><div class="k">Shifts + allowances</div><div class="v num">${money(p.gross,2)}</div></div>
-    <div class="card kpi"><div class="k">Bonus · RDOs · sick</div><div class="v num">${money(p.bonus,0)} · ${money(p.leave,0)} · ${money(p.sick||0,0)}</div></div>`;
+    <div class="card kpi"><div class="k">Bonus (est.)</div><div class="v num">${money(p.bonus,2)}</div></div>`;
   const slip = (S.payslips||{})[curF];
   let note = slip ? `<div class="card" style="margin-bottom:10px"><div class="lbl">Your payslip${slip.payDate?` (paid ${nice(slip.payDate)})`:""}</div>
     <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Payslip</th><th class="r">App</th></tr>
