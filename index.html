@@ -2044,7 +2044,16 @@ function renderSetup(){
    Messages live in rooms/main/messages as {uid, name, text, ts}. Everyone with the app can read and post;
    people can delete only their own messages. The Firebase code (vendor/firebase-chat.js) only loads once the
    config below is filled in. */
-const FIREBASE_CONFIG = null;
+// Firebase project "PBT VSE Chat" (pbt-vse-chat), owned by Hemi's Google account. These values are meant to be public;
+// the Firestore rules (firestore.rules) are what protect the data.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAfHj7PYdfCidtn76oayhVGvr3kNAyRgag",
+  authDomain: "pbt-vse-chat.firebaseapp.com",
+  projectId: "pbt-vse-chat",
+  storageBucket: "pbt-vse-chat.firebasestorage.app",
+  messagingSenderId: "929974580422",
+  appId: "1:929974580422:web:d661db5852ea930db153c7"
+};
 const CHAT_ROOM = "main", CHAT_MAX = 150;
 const chat = { fb:null, db:null, uid:null, msgs:[], ready:false, loading:null, err:"", lastSend:0, armed:null };
 const chatSeenKey = "pbt-chat-seen";
