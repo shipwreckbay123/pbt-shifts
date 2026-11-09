@@ -74,7 +74,7 @@ header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform
 .brand{display:flex;align-items:stretch;gap:8px}
 .brandT{display:flex;flex-direction:column;font:900 27px/.92 "Archivo", var(--display) !important;letter-spacing:-.01em !important}
 .brandT span:first-child{color:#fff}.brandT span:last-child{color:var(--accent)}
-.brandA{height:50px;width:43px;flex:none}
+.brandA{height:50px;width:64px;flex:none;align-self:center}
 #sync{display:none !important}   /* "Saved on this phone" pill removed (Hemi) */
 /* Microster link, saved pill, take-home summary and scratches only show on the Calendar tab */
 body[data-tab]:not([data-tab="cal"]) header.top .mslink, body[data-tab]:not([data-tab="cal"]) #sync,
@@ -373,8 +373,9 @@ details.imp .btn{min-height:40px;font-size:14px}
   <div class="row">
     <div class="lead">
       <div class="brand"><h1 class="brandT"><span>PBT</span><span>VSE</span></h1>
-        <svg class="brandA" viewBox="0 0 48 56" aria-hidden="true"><defs><linearGradient id="anG" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="48" y2="56"><stop offset="0" stop-color="#00f0a0"/><stop offset=".5" stop-color="#2ad4ff"/><stop offset="1" stop-color="#f58ef0"/></linearGradient></defs>
-          <g fill="none" stroke="url(#anG)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="8" r="5"/><path d="M24 13v38"/><path d="M13 22h22"/><path d="M5 34c1 10 9 17 19 17s18-7 19-17"/><path d="M2 38l3-5 5 3M46 38l-3-5-5 3"/></g></svg></div>
+        <svg class="brandA" viewBox="0 0 64 50" aria-hidden="true"><defs><linearGradient id="anG" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="64" y2="50"><stop offset="0" stop-color="#00f0a0"/><stop offset=".5" stop-color="#2ad4ff"/><stop offset="1" stop-color="#f58ef0"/></linearGradient><linearGradient id="anG2" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="48" y2="56"><stop offset="0" stop-color="#00f0a0"/><stop offset=".5" stop-color="#2ad4ff"/><stop offset="1" stop-color="#f58ef0"/></linearGradient></defs>
+          <g fill="none" stroke="url(#anG)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="60" height="46" rx="3.5"/><path d="M2 9H62M2 41H62"/><path d="M8 14V36"/><path d="M12.5 14V36"/><path d="M17 14V36"/><path d="M47 14V36"/><path d="M51.5 14V36"/><path d="M56 14V36"/></g>
+          <svg x="21.6" y="12" width="20.8" height="26" viewBox="0 0 48 56"><g fill="none" stroke="url(#anG2)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="8" r="5"/><path d="M24 13v38"/><path d="M13 22h22"/><path d="M5 34c1 10 9 17 19 17s18-7 19-17"/><path d="M2 38l3-5 5 3M46 38l-3-5-5 3"/></g></svg></svg></div>
       <a class="mslink" href="https://dpw.portal.tamblawfm.net/Microster.SelfService/Default.aspx" target="_blank" rel="noopener">Microster ↗</a>
     </div>
     <span id="sync" class="pill">Loading…</span>
