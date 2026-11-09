@@ -2,7 +2,7 @@
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PBT Shifts &amp; Pay</title>
 <meta name="theme-color" content="#12324f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -66,21 +66,22 @@ button{cursor:pointer}
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:540px;margin:0 auto;padding:0 16px 96px}
 
-header.top{background:var(--navy);color:#fff;padding:14px 16px 16px}
+header.top{background:var(--navy);color:#fff;padding:calc(14px + max(env(safe-area-inset-top, 0px), var(--apkTop, 0px))) 16px 16px}
 :root[data-theme="dark"] header.top{background:transparent}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header.top{background:transparent}}
 header.top .row{max-width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
-.brand{display:flex;align-items:stretch;gap:10px}
-.brandT{display:flex;flex-direction:column;font:900 34px/.9 "Archivo", var(--display) !important;letter-spacing:-.01em !important}
+.brand{display:flex;align-items:stretch;gap:8px}
+.brandT{display:flex;flex-direction:column;font:900 27px/.92 "Archivo", var(--display) !important;letter-spacing:-.01em !important}
 .brandT span:first-child{color:#fff}.brandT span:last-child{color:var(--accent)}
-.brandA{height:61px;width:52px;flex:none}
+.brandA{height:50px;width:43px;flex:none}
 #sync{display:none !important}   /* "Saved on this phone" pill removed (Hemi) */
 /* Microster link, saved pill, take-home summary and scratches only show on the Calendar tab */
 body[data-tab]:not([data-tab="cal"]) header.top .mslink, body[data-tab]:not([data-tab="cal"]) #sync,
 body[data-tab]:not([data-tab="cal"]) #summary, body[data-tab]:not([data-tab="cal"]) #summarySub, body[data-tab]:not([data-tab="cal"]) #scrBar{display:none}
 body[data-tab]:not([data-tab="cal"]) header.top{padding-bottom:14px}
-header.top .lead{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+header.top .lead{display:flex;flex-direction:row-reverse;align-items:center;justify-content:space-between;gap:10px;min-width:0;width:100%}
+header.top .row{display:block}
 .mslink{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:99px;background:var(--accent);color:var(--navy);font-weight:700;font-size:13px;text-decoration:none}
 .mslink:active{opacity:.8}
 .pill{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.12);white-space:nowrap}
@@ -224,21 +225,22 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 /* Amber "Your week" style cards: dark glass, white condensed heading, big yellow or pink numbers */
 .amb{position:relative;border-radius:18px;padding:16px;color:#fff;border:2px solid #0c1a40;
   background:linear-gradient(165deg, rgba(14,48,74,.86) 0%, rgba(52,46,58,.84) 55%, rgba(78,42,88,.86) 100%);box-shadow:0 6px 18px rgba(5,10,30,.25)}
-.ambTag{display:inline-block;font:700 19px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#0c1a40;padding:7px 12px;border-radius:7px;
+.ambTag{display:inline-block;font:700 17px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#0c1a40;padding:7px 12px;border-radius:7px;
   border:3px solid transparent;background:linear-gradient(#fff,#fff) padding-box, linear-gradient(100deg,#00f0a0,#2ad4ff 45%,#f58ef0) border-box}
-.ambLbl{font:700 19px/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#fff}
+.ambLbl{font:700 17px/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em;color:#fff}
 .ambSub{font-size:13px;color:rgba(255,255,255,.85);margin-top:8px}
-.ambBig{font:900 54px/1 "Archivo", var(--display);letter-spacing:-.01em;margin-top:6px}
-.ambMid{font:900 30px/1 "Archivo", var(--display);letter-spacing:-.01em;margin-top:4px}
+.ambBig{font:900 clamp(30px, 10.5vw, 44px)/1 "Archivo", var(--display);letter-spacing:-.01em;margin-top:6px;white-space:nowrap}
+.ambMid{font:900 clamp(17px, 5.6vw, 24px)/1.05 "Archivo", var(--display);letter-spacing:-.01em;margin-top:4px;white-space:nowrap}
 .ambY{color:#ffc21a}.ambP{color:#f58ef0}
 .ambY.warn{color:#ff9b3d}.ambY.over{color:#ff6f8e}
-.ambUnit{font:500 22px var(--body);margin-left:6px;letter-spacing:.04em}
-.ambChip{display:inline-block;font:700 15px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;padding:6px 10px;border-radius:7px;border:2px solid #f58ef0;color:#f58ef0;margin-top:10px}
+.ambUnit{font:500 15px var(--body);margin-left:5px;letter-spacing:.03em}
+.ambChip{display:inline-block;font:700 14px/1.1 var(--display);max-width:100%;text-transform:uppercase;letter-spacing:.02em;padding:6px 10px;border-radius:7px;border:2px solid #f58ef0;color:#f58ef0;margin-top:10px}
 .ambChip.ok{border-color:#00f0a0;color:#00f0a0}.ambChip.over{background:#ff6f8e;border-color:#ff6f8e;color:#1a0b2a}
 .amb2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.amb2>div{min-width:0}
 .ambNote{font-size:12px;color:rgba(255,255,255,.7);margin-top:12px}
 .lvTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
-.lvT{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:11px 12px;border-radius:14px;min-width:0}
+.lvT{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 10px;border-radius:14px;min-width:0;overflow:hidden}
 .lvL{font-size:12px;color:rgba(255,255,255,.75)}
 .scrCard .scrBarTrack{margin-top:12px}
 .lvNone{grid-column:1/-1;font-size:12px;opacity:.85}
@@ -284,6 +286,8 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 @media (prefers-reduced-motion: reduce){.sheet{transition:none}}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:10}
+nav.tabs{padding-bottom:env(safe-area-inset-bottom, 0px)}
+.wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
 nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 nav.tabs button{background:none;border:0;min-height:58px;font:600 14px var(--display);letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
@@ -1199,8 +1203,8 @@ function renderScrBar(){
       <div class="ambBig ambY ${cls === "ok" ? "" : cls}">${left < 0 ? "+" + (-left) : left}</div>
       <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
       <div class="amb2">
-        <div><div class="ambLbl" style="font-size:15px">Used</div><div class="ambMid ambY">${n}<span class="ambUnit" style="font-size:15px">of ${SCR_LIMIT}</span></div></div>
-        <div><div class="ambLbl" style="font-size:15px">Resets</div><div class="ambMid ambY" style="font-size:24px">${nice(add(st,28))}</div></div>
+        <div><div class="ambLbl" style="font-size:15px">Used</div><div class="ambMid ambY">${n}<span class="ambUnit">of ${SCR_LIMIT}</span></div></div>
+        <div><div class="ambLbl" style="font-size:15px">Resets</div><div class="ambMid ambY">${nice(add(st,28))}</div></div>
       </div>
       ${left < 0 ? `<div class="ambChip over">Over the limit: no minimum salary this period</div>` : ""}
     </div>
@@ -1893,6 +1897,7 @@ const APK_URL = "https://github.com/shipwreckbay123/pbt-shifts/releases/latest/d
 let installPrompt = null;
 function inClaude(){ return !!(window.claude && typeof window.claude.use === "function"); }
 function isApk(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+if(isApk()) document.documentElement.style.setProperty("--apkTop", "28px");
 function isInstalled(){ return isApk() || matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; renderInstall(); });
 window.addEventListener("appinstalled", () => { installPrompt = null; renderInstall(); });
