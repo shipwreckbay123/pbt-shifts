@@ -242,7 +242,8 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .lvTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
 .lvT{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 10px;border-radius:14px;min-width:0;overflow:hidden}
 .lvL{font-size:12px;color:rgba(255,255,255,.75)}
-.scrCard .scrBarTrack{margin-top:12px}
+.scrCard{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px;border-radius:14px}
+.scrCard>div{min-width:0}
 .lvNone{grid-column:1/-1;font-size:12px;opacity:.85}
 #shJob button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
 .scrbar b.warn{color:#ffcf6b}.scrbar b.over{color:#ff8a8a}
@@ -1198,15 +1199,13 @@ function renderScrBar(){
   // Big "left" number + a bar that fills as you use them: green, amber at 5 or fewer left, red at none left / over.
   const left = SCR_LIMIT - n, cls = left < 0 ? "over" : left === 0 ? "over" : left <= 5 ? "warn" : "ok";
   const pct = Math.min(100, n / SCR_LIMIT * 100);
-  $("scrBar").innerHTML = `<div class="amb scrCard">
-      <div class="ambLbl">Scratches left</div>
-      <div class="ambBig ambY ${cls === "ok" ? "" : cls}">${left < 0 ? "+" + (-left) : left}</div>
-      <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
-      <div class="amb2">
-        <div><div class="ambLbl" style="font-size:15px">Used</div><div class="ambMid ambY">${n}<span class="ambUnit">of ${SCR_LIMIT}</span></div></div>
-        <div><div class="ambLbl" style="font-size:15px">Resets</div><div class="ambMid ambY">${nice(add(st,28))}</div></div>
-      </div>
-      ${left < 0 ? `<div class="ambChip over">Over the limit: no minimum salary this period</div>` : ""}
+  // Same height as the RDO / sick / holiday cards: three columns, no bar (Hemi: the big version was too much).
+  const rs = add(st,28);
+  $("scrBar").innerHTML = `<div class="amb scrCard" role="group" aria-label="${n} of ${SCR_LIMIT} scratches used, ${left} left, resets ${nice(rs)}">
+      <div><div class="ambLbl" style="font-size:16px">Scratches</div><div class="ambMid ambY ${cls === "ok" ? "" : cls}">${left < 0 ? "+" + (-left) : left}</div><div class="lvL">${left < 0 ? "over the limit" : "left"}</div></div>
+      <div><div class="ambLbl" style="font-size:16px">Used</div><div class="ambMid ambY">${n}</div><div class="lvL">of ${SCR_LIMIT}</div></div>
+      <div><div class="ambLbl" style="font-size:16px">Resets</div><div class="ambMid ambY">${D(rs).getUTCDate()} ${MON[D(rs).getUTCMonth()]}</div><div class="lvL">${["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][dow(rs)]}</div></div>
+      ${left < 0 ? `<div class="scrOver" style="grid-column:1/-1;margin-top:2px">No minimum salary this period</div>` : ""}
     </div>
     ${leaveTiles()}`;
 }
