@@ -1,6 +1,6 @@
 // Keeps the app working offline. The app page is checked online first (so updates show
 // straight away) and falls back to the saved copy; fonts and the PDF reader are saved as they load.
-const CACHE = "pbt-shifts-v7";
+const CACHE = "pbt-shifts-v8";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => {

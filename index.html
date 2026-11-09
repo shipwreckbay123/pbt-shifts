@@ -259,6 +259,7 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn.dark{background:var(--navy);color:#fff;border-color:var(--navy)}
 .btn.danger{color:var(--ph)}
+.btn.danger.sure{background:var(--pink);color:#fff;border-color:var(--pink)}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 .btns .btn{flex:1}
 #panelPick{position:fixed;inset:0;z-index:60;background:rgba(5,15,25,.86);display:grid;place-items:center;padding:20px}
@@ -698,6 +699,12 @@ details.imp .btn{min-height:40px;font-size:14px}
         <textarea id="bkText" aria-label="Backup text" placeholder="Paste a backup here"></textarea>
         <button class="btn dark" id="bkRestore">Restore this backup</button>
       </div>
+    </div>
+
+    <h2>Start fresh</h2>
+    <div class="card stack">
+      <div class="small muted">Wipes every shift, payslip and setting saved in this app, so it's like a brand new install. Copy a backup first if you might want them back.</div>
+      <button class="btn danger" id="wipeAll">Start fresh</button>
     </div>
   </section>
 </main>
@@ -2414,6 +2421,21 @@ $("bkShow").onclick = () => { $("bkBox").hidden = !$("bkBox").hidden; };
 $("bkRestore").onclick = () => {
   try { const o = JSON.parse($("bkText").value); if(!o || typeof o.shifts!=="object") throw 0; S = merge(o); persist(); renderAll(); toast("Backup restored"); $("bkBox").hidden = true; }
   catch(e){ toast("That doesn't look like a backup from this app"); }
+};
+// start fresh: tap once to arm, tap again within 5 seconds to wipe
+$("wipeAll").onclick = () => {
+  const b = $("wipeAll");
+  if(!b.classList.contains("sure")){
+    b.classList.add("sure"); b.textContent = "Tap again to wipe everything";
+    clearTimeout(b.t); b.t = setTimeout(() => { b.classList.remove("sure"); b.textContent = "Start fresh"; }, 5000);
+    return;
+  }
+  clearTimeout(b.t); b.classList.remove("sure"); b.textContent = "Start fresh";
+  S = addPicnicDays(blankState());
+  try { localStorage.removeItem(LS_KEY); } catch(e){}
+  persist(); renderAll();
+  curMonth = todayKey().slice(0,7); renderMonth();
+  toast("All cleared. The app is fresh.");
 };
 
 /* ============ MICROSTER SCREENSHOT IMPORT ============ */
