@@ -292,9 +292,28 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:10}
 nav.tabs{padding-bottom:env(safe-area-inset-bottom, 0px)}
 .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
-nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
-nav.tabs button{background:none;border:0;min-height:58px;font:600 14px var(--display);letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
+nav.tabs .in{max-width:540px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+nav.tabs button{position:relative;background:none;border:0;min-height:58px;padding:0 2px;font:600 13px var(--display);letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-top:3px solid transparent}
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-top-color:var(--accent)}
+/* chat room */
+.tbadge{position:absolute;top:6px;right:calc(50% - 30px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--pink);color:#fff;font:700 11px/18px var(--body);letter-spacing:0}
+.chatList{display:flex;flex-direction:column;gap:8px}
+.cm{max-width:84%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:8px 11px}
+.cm.me{align-self:flex-end;background:var(--mint-soft);border-color:var(--mint-line);border-radius:14px 14px 4px 14px}
+.cm .who{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--muted)}
+.cm .who b{color:var(--ink);font-size:13px}
+.cm .tx{white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;font-size:15px;margin-top:2px}
+.cm .del{margin-left:auto;background:none;border:0;color:var(--muted);font-size:12px;padding:2px 0 2px 8px;cursor:pointer}
+.cm .del.sure{color:var(--pink);font-weight:700}
+.cday{align-self:center;font-size:12px;color:var(--muted);margin:6px 0 2px}
+.composer{display:none}
+body[data-tab="chat"] .composer.on{display:flex;position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom, 0px));z-index:9;gap:8px;padding:8px 12px;background:var(--bg);border-top:1px solid var(--line)}
+.composer .in{display:flex;gap:8px;max-width:540px;margin:0 auto;width:100%}
+.composer textarea{flex:1;min-height:44px;max-height:120px;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:15px var(--body);background:var(--surface);color:var(--ink)}
+.composer button{min-width:68px;border:0;border-radius:12px;background:var(--navy);color:#fff;font-weight:700}
+body[data-tab="chat"] .wrap{padding-bottom:calc(170px + env(safe-area-inset-bottom, 0px))}
+body[data-tab="chat"] .toast{bottom:calc(140px + env(safe-area-inset-bottom, 0px))}
+#chatMe a{color:var(--ink);font-weight:600}
 .view{display:none}
 .view.on{display:block}
 .toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -547,6 +566,19 @@ details.imp .btn{min-height:40px;font-size:14px}
     </div>
   </section>
 
+  <section id="v-chat" class="view" aria-label="Chat">
+    <h2>Crew chat</h2>
+    <div class="small muted" style="margin-bottom:10px">Everyone with the PBT VSE app can read this. Keep it friendly, and don't post anything private or confidential about DP World.</div>
+    <div id="chatOff" class="card" hidden><b>The chat room isn't switched on yet.</b><div class="small muted" style="margin-top:4px">It's being set up. When it's ready, messages will show here.</div></div>
+    <div id="chatErr" class="card" hidden style="border-color:var(--pink-line);background:var(--pink-soft)"></div>
+    <div id="chatNameBox" class="card stack" hidden>
+      <div class="field"><label for="chatNameIn">Your first name or nickname</label><input id="chatNameIn" maxlength="24" autocomplete="nickname" placeholder="e.g. Hemi"></div>
+      <button type="button" class="btn dark" id="chatNameSave">Join the chat</button>
+    </div>
+    <div id="chatList" class="chatList"></div>
+    <div id="chatMe" class="small muted" style="margin-top:14px" hidden></div>
+  </section>
+
   <section id="v-set" class="view" aria-label="Setup">
     <h2>Fill a week or a run of weeks</h2>
     <div class="card stack">
@@ -670,11 +702,16 @@ details.imp .btn{min-height:40px;font-size:14px}
   </section>
 </main>
 
+<div class="composer" id="chatComposer"><div class="in">
+  <textarea id="chatText" maxlength="500" rows="1" placeholder="Message the crew" aria-label="Message"></textarea>
+  <button type="button" id="chatSend">Send</button>
+</div></div>
 <nav class="tabs" aria-label="Sections"><div class="in" role="tablist">
   <button role="tab" data-v="cal" aria-selected="true">Calendar</button>
   <button role="tab" data-v="pay" aria-selected="false">Pay</button>
   <button role="tab" data-v="year" aria-selected="false">Year</button>
   <button role="tab" data-v="port" aria-selected="false">Port</button>
+  <button role="tab" data-v="chat" aria-selected="false">Chat<span class="tbadge" id="chatBadge" hidden></span></button>
   <button role="tab" data-v="set" aria-selected="false">Setup</button>
 </div></nav>
 
@@ -2003,6 +2040,105 @@ function renderSetup(){
      <tr><td>VSE minimum salary / year</td><td class="r" colspan="2">${money(st.min,2)}</td></tr>`;
 }
 
+/* ---------- Crew chat (Firebase: anonymous sign-in + Firestore, rules in firestore.rules) ----------
+   Messages live in rooms/main/messages as {uid, name, text, ts}. Everyone with the app can read and post;
+   people can delete only their own messages. The Firebase code (vendor/firebase-chat.js) only loads once the
+   config below is filled in. */
+const FIREBASE_CONFIG = null;
+const CHAT_ROOM = "main", CHAT_MAX = 150;
+const chat = { fb:null, db:null, uid:null, msgs:[], ready:false, loading:null, err:"", lastSend:0, armed:null };
+const chatSeenKey = "pbt-chat-seen";
+function chatSeen(){ try { return Number(localStorage.getItem(chatSeenKey)) || 0; } catch(e){ return 0; } }
+function chatSetSeen(ms){ try { localStorage.setItem(chatSeenKey, String(ms)); } catch(e){} }
+const chatMs = m => m.ts && m.ts.toMillis ? m.ts.toMillis() : (typeof m.ts === "number" ? m.ts : Date.now());
+function chatStart(){
+  if(!FIREBASE_CONFIG || chat.loading) return chat.loading;
+  chat.loading = (async () => {
+    const fb = await import("./vendor/firebase-chat.js");
+    const app = fb.initializeApp(FIREBASE_CONFIG);
+    const auth = fb.getAuth(app);
+    chat.db = fb.initializeFirestore(app, {});
+    if(window.CHAT_TEST) window.CHAT_TEST(fb, auth, chat.db);   // local testing only
+    const cred = await fb.signInAnonymously(auth); chat.uid = cred.user.uid;
+    const q = fb.query(fb.collection(chat.db, "rooms", CHAT_ROOM, "messages"), fb.orderBy("ts", "desc"), fb.limit(CHAT_MAX));
+    fb.onSnapshot(q, snap => {
+      chat.msgs = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) })).reverse();
+      chat.err = ""; renderChat(true); chatBadge();
+    }, e => { chat.err = "The chat couldn't load. Check your internet and open the Chat tab again."; console.warn("chat", e); renderChat(); });
+    chat.fb = fb; chat.ready = true; renderChat();
+  })().catch(e => { console.warn("chat start", e); chat.err = "The chat couldn't connect. Check your internet and try again."; chat.loading = null; renderChat(); });
+  return chat.loading;
+}
+function chatOnTab(){ return document.body.dataset.tab === "chat" && document.visibilityState === "visible"; }
+function chatBadge(){
+  const el = $("chatBadge"); if(!el) return;
+  if(chatOnTab() && chat.msgs.length){ chatSetSeen(chatMs(chat.msgs[chat.msgs.length - 1])); }
+  const seen = chatSeen();
+  const n = chat.msgs.filter(m => m.uid !== chat.uid && chatMs(m) > seen).length;
+  el.hidden = !n; el.textContent = n > 99 ? "99+" : String(n);
+}
+function chatOpened(){ chatStart(); renderChat(); chatBadge(); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 30); }
+function chatWhen(ms){
+  const d = new Date(ms), t = d.toLocaleTimeString("en-AU", { hour:"numeric", minute:"2-digit" }).replace(" ", "").toLowerCase();
+  return t;
+}
+function chatDay(ms){
+  const d = new Date(ms), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
+  if(d.toDateString() === now.toDateString()) return "Today";
+  if(d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-AU", { weekday:"short", day:"numeric", month:"short" });
+}
+function renderChat(newMsgs){
+  if(!$("v-chat")) return;
+  const name = S.settings.chatName || "";
+  $("chatOff").hidden = !!FIREBASE_CONFIG;
+  $("chatErr").hidden = !chat.err; $("chatErr").textContent = chat.err;
+  $("chatNameBox").hidden = !FIREBASE_CONFIG || !!name;
+  $("chatComposer").classList.toggle("on", !!FIREBASE_CONFIG && !!name);
+  $("chatMe").hidden = !name; $("chatMe").innerHTML = name ? `You're posting as <b>${esc(name)}</b> · <a href="#" id="chatRename">change</a>` : "";
+  if(!FIREBASE_CONFIG){ $("chatList").innerHTML = ""; return; }
+  const nearBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 160;
+  let lastDay = "", html = "";
+  if(chat.ready && !chat.msgs.length) html = `<div class="small muted">No messages yet. Say g'day.</div>`;
+  if(!chat.ready && !chat.err) html = `<div class="small muted">Loading the chat…</div>`;
+  for(const m of chat.msgs){
+    const ms = chatMs(m), day = chatDay(ms), me = m.uid === chat.uid;
+    if(day !== lastDay){ html += `<div class="cday">${esc(day)}</div>`; lastDay = day; }
+    html += `<div class="cm${me ? " me" : ""}"><div class="who"><b>${esc(m.name || "?")}</b><span>${esc(chatWhen(ms))}</span>${me ? `<button type="button" class="del${chat.armed === m.id ? " sure" : ""}" data-del="${esc(m.id)}">${chat.armed === m.id ? "Tap again to delete" : "Delete"}</button>` : ""}</div><div class="tx">${esc(m.text)}</div></div>`;
+  }
+  $("chatList").innerHTML = html;
+  if(newMsgs && document.body.dataset.tab === "chat" && nearBottom) window.scrollTo(0, document.body.scrollHeight);
+}
+async function chatSend(){
+  const box = $("chatText"), text = box.value.trim();
+  if(!text) return;
+  if(!chat.ready){ toast("The chat is still connecting"); return; }
+  if(Date.now() - chat.lastSend < 1500){ toast("Slow down a sec"); return; }
+  chat.lastSend = Date.now(); box.value = ""; box.style.height = "";
+  try {
+    await chat.fb.addDoc(chat.fb.collection(chat.db, "rooms", CHAT_ROOM, "messages"),
+      { uid: chat.uid, name: S.settings.chatName, text: text.slice(0, 500), ts: chat.fb.serverTimestamp() });
+    window.scrollTo(0, document.body.scrollHeight);
+  } catch(e){ console.warn("send", e); box.value = text; toast("Message didn't send. Check your internet."); }
+}
+$("chatSend").onclick = chatSend;
+$("chatText").addEventListener("input", e => { const t = e.target; t.style.height = ""; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
+$("chatNameSave").onclick = () => {
+  const n = $("chatNameIn").value.trim().replace(/\s+/g, " ").slice(0, 24);
+  if(!n){ toast("Type your first name or a nickname"); return; }
+  S.settings.chatName = n; persist(); renderChat(); toast(`You're in, ${n}`);
+};
+$("v-chat").addEventListener("click", async e => {
+  if(e.target.id === "chatRename"){ e.preventDefault(); $("chatNameIn").value = S.settings.chatName || ""; S.settings.chatName = ""; renderChat(); $("chatNameIn").focus(); return; }
+  const id = e.target.dataset && e.target.dataset.del; if(!id) return;
+  if(chat.armed !== id){ chat.armed = id; renderChat(); setTimeout(() => { if(chat.armed === id){ chat.armed = null; renderChat(); } }, 4000); return; }
+  chat.armed = null;
+  try { await chat.fb.deleteDoc(chat.fb.doc(chat.db, "rooms", CHAT_ROOM, "messages", id)); } catch(err){ toast("Couldn't delete that message"); }
+});
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") chatBadge(); });
+// connect a few seconds after opening so the Chat tab can show new messages
+if(FIREBASE_CONFIG) setTimeout(chatStart, 2500);
+
 function renderAll(){ renderSummary(); renderEofy(); renderMonth(); renderWeek(); renderPay(); renderYear(); renderSetup(); renderShips(); renderWx(); }
 
 /* ============ DAY SHEET ============ */
@@ -2128,6 +2264,7 @@ document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("cl
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.v));
   document.body.dataset.tab = b.dataset.v;
   window.scrollTo(0,0);
+  if(b.dataset.v === "chat") chatOpened();
 }));
 $("mPrev").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()-1); curMonth = K(d).slice(0,7); renderMonth(); };
 $("mNext").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()+1); curMonth = K(d).slice(0,7); renderMonth(); };
