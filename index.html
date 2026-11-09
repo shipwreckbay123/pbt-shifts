@@ -18,8 +18,8 @@
 /* Plan: harbour navy + steel neutrals, hi-vis amber accent; shift colours do the talking.
    Layout: one phone-width column, summary on top, tabs at the bottom. */
 :root{
-  --bg:#eef1f4; --surface:#ffffff; --ink:#14202c; --muted:#5b6b7a; --line:#d5dce3;
-  --accent:#e8a317; --accent-ink:#1b1400; --navy:#12324f;
+  --bg:#eef3fb; --surface:#ffffff; --ink:#0c1a40; --muted:#58698f; --line:#d6deef;
+  --accent:#00e69a; --accent-ink:#0c1a40; --navy:#0c1a40; --mint-soft:#c6f6e3; --mint-line:#7fe6c1; --pink-soft:#fbd5f4; --pink-line:#ef9fe0; --pink:#d23fbf;
   --day:#f2c230; --day-ink:#3a2c00;
   --eve:#ee7b3a; --eve-ink:#ffffff;
   --night:#3d4aa8; --night-ink:#ffffff;
@@ -35,15 +35,15 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0d1620; --surface:#15212d; --ink:#e6edf3; --muted:#93a3b3; --line:#26364a;
-    --navy:#0a1a29; --accent:#f0b43a; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
+    --bg:#0b1a3c; --surface:#14254f; --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
+    --navy:#0b1a3c; --accent:#00f0a0; --mint-soft:#0f3a4f; --mint-line:#1f8f78; --pink-soft:#3a2152; --pink-line:#a85bc8; --pink:#f08ae0; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
     --sch:#16302a; --sch-line:#3fb07a; --cpd:#4f8fd6;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0d1620; --surface:#15212d; --ink:#e6edf3; --muted:#93a3b3; --line:#26364a;
-  --navy:#0a1a29; --accent:#f0b43a; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
+  --bg:#0b1a3c; --surface:#14254f; --ink:#eef2ff; --muted:#9fb0d8; --line:#2a3d70;
+  --navy:#0b1a3c; --accent:#00f0a0; --mint-soft:#0f3a4f; --mint-line:#1f8f78; --pink-soft:#3a2152; --pink-line:#a85bc8; --pink:#f08ae0; --day:#e8b923; --eve:#e8743a; --night:#5866c9; --irr:#6b7885; --leave:#3a9170;
   --sch:#16302a; --sch-line:#3fb07a; --cpd:#4f8fd6;
   color-scheme: dark;
 }
@@ -59,7 +59,7 @@ button{cursor:pointer}
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:540px;margin:0 auto;padding:0 16px 96px}
 
-header.top{background:var(--navy);color:#fff;padding:14px 16px 16px}
+header.top{background:var(--navy);color:#fff;padding:14px 16px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
 header.top .row{max-width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
 header.top h1 span{color:var(--accent)}
@@ -72,7 +72,7 @@ header.top .lead{display:flex;flex-direction:column;align-items:flex-start;gap:8
 .mslink:active{opacity:.8}
 .pill{font-size:12px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.12);white-space:nowrap}
 .pill.ok{background:rgba(46,139,87,.35)}
-.pill.local{background:rgba(232,163,23,.3)}
+.pill.local{background:rgba(0,230,154,.22)}
 .summary{max-width:540px;margin:12px auto 0;display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px}
 .summary .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
 .summary .v{font:600 26px/1.1 var(--display)}
@@ -165,7 +165,7 @@ tr.total td{font-weight:600;border-bottom:0}
 .kpi.hl{background:var(--navy);color:#fff;border-color:var(--navy)}
 .kpi.hl .k{color:rgba(255,255,255,.75)}
 .kpi.hl .v{color:var(--accent)}
-.note{font-size:13px;padding:10px 12px;border-radius:10px;background:rgba(232,163,23,.12);border:1px solid rgba(232,163,23,.35)}
+.note{font-size:13px;padding:10px 12px;border-radius:10px;background:rgba(0,230,154,.1);border:1px solid rgba(0,200,140,.4)}
 
 /* year */
 .year{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
@@ -204,9 +204,15 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .scrTxt{font-size:12px;line-height:1.35;opacity:.92}
 .scrTxt b{font-size:15px;font-weight:600;opacity:1}
 .scrBarTrack{height:9px;border-radius:6px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:8px}
-.scrBarTrack i{display:block;height:100%;border-radius:6px;background:#4cc38a}
+.scrBarTrack i{display:block;height:100%;border-radius:6px;background:#00f0a0}
 .scrBarTrack i.warn{background:#ffcf6b}.scrBarTrack i.over{background:#ff8a8a}
 .scrOver{margin-top:6px;font-weight:600;color:#ff8a8a}
+.lvTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.lvT{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;background:rgba(255,255,255,.08);border-radius:10px;padding:9px 6px;min-width:0}
+.lvN{font:700 26px/1 var(--display);color:#fff}
+.lvL{font-size:12px;line-height:1.2;font-weight:600}
+.lvL small{font-weight:400;opacity:.8;font-size:11px}
+.lvNone{grid-column:1/-1;font-size:12px;opacity:.85}
 #shJob button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
 .scrbar b.warn{color:#ffcf6b}.scrbar b.over{color:#ff8a8a}
 .stepper{display:flex;align-items:center;gap:8px}
@@ -294,17 +300,16 @@ details.imp .btn{min-height:40px;font-size:14px}
 .ship .st small{display:block;font:600 11px/1.2 var(--body);color:var(--muted);text-transform:uppercase}
 .ship .sv{flex:1;min-width:0}
 .ship .sv b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ship .bb{flex:none;font:700 12px/1 var(--body);padding:5px 7px;border-radius:6px;background:var(--navy);color:#fff}
+.ship .bb{flex:none;font:700 12px/1 var(--body);padding:5px 7px;border-radius:6px;background:var(--accent);color:var(--accent-ink)}
 .ship.mine{background:color-mix(in srgb, var(--good) 12%, transparent);border-radius:8px;padding-left:6px;padding-right:6px}
 .ship .mt{display:inline-block;margin-top:3px;font:700 11px/1 var(--body);padding:3px 6px;border-radius:99px;background:var(--good);color:#fff}
 .ship.past{opacity:.5}
 .eofy .big{font:700 34px/1.1 var(--display)}
-:root{--pastY:#fff3c4;--pastYl:#ecd98a;--pastR:#ffd6d2;--pastRl:#f0a9a2}
-:root[data-theme="dark"]{--pastY:#3a3216;--pastYl:#5c4f22;--pastR:#3e1f1d;--pastRl:#6a332f}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--pastY:#3a3216;--pastYl:#5c4f22;--pastR:#3e1f1d;--pastRl:#6a332f}}
-.eofy.calm{background:var(--pastY);border-color:var(--pastYl)}
-.eofy.hot{background:var(--pastR);border-color:var(--pastRl)}
-.eofy.calm .bar,.eofy.hot .bar{background:rgba(0,0,0,.1)}
+.eofy.calm{background:var(--mint-soft);border-color:var(--mint-line)}
+.eofy.hot{background:var(--pink-soft);border-color:var(--pink-line)}
+.eofy.calm .bar,.eofy.hot .bar{background:rgba(127,127,160,.22)}
+.eofy.calm .bar i{background:var(--accent)}
+.eofy.hot .bar i{background:var(--pink)}
 .eofy .bar{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:10px;position:relative}
 .eofy .bar i{display:block;height:100%;background:var(--good)}
 .eofy .bar i.warn{background:var(--warn)}.eofy .bar i.over{background:var(--ph)}
@@ -1162,7 +1167,8 @@ function renderScrBar(){
       <span class="scrTxt"><b>${left < 0 ? "scratches over the limit" : left === 1 ? "scratch left" : "scratches left"}</b><br>
       ${n} of ${SCR_LIMIT} used · resets ${nice(add(st,28))}</span></div>
     <div class="scrBarTrack" role="img" aria-label="${n} of ${SCR_LIMIT} scratches used"><i class="${cls}" style="width:${pct}%"></i></div>
-    ${left < 0 ? `<div class="scrOver">Over the limit: no minimum salary this period</div>` : ""}`;
+    ${left < 0 ? `<div class="scrOver">Over the limit: no minimum salary this period</div>` : ""}
+    ${leaveTiles()}`;
 }
 // Six in a row, at a glance: how long your current run is, and the next forced day off coming up.
 function sixLine(){
@@ -1503,6 +1509,22 @@ function renderUpgrades(){
 }
 // Leave balances: last payslip's figures, then 7 hours off for each sick / annual / RDO day you've logged
 // since, and the VSE bank topped up each pay by VSE PAID ÷ $55.50 an hour (matches your Sep–Oct payslips).
+// Hours left now for each kind of leave (null without a payslip). Used by the header and the Year tab.
+function leaveNow(){
+  const slips = Object.values(S.payslips||{}).filter(x => x.bal && (x.bal.sicEnt !== null || x.bal.annEnt !== null)).sort((a,b) => a.to < b.to ? -1 : 1);
+  const sl = slips[slips.length-1]; if(!sl) return null;
+  const today = todayKey(); let sick=0, ann=0, rdo=0;
+  for(const k in S.shifts){ if(k > sl.to && k <= today){ const t = S.shifts[k].type; if(t==="S") sick++; else if(t==="A" && !S.shifts[k].nopay) ann++; else if(t==="L") rdo++; } }
+  let pays = 0; for(let f = add(sl.from,14); add(f,17) <= today; f = add(f,14)) pays++;
+  const topUp = (Number(sl.vsePaid)||0) / ((Number(S.settings.leavePay)||388.51)/7), b = sl.bal;
+  return { rdo: b.vspEnt === null ? null : (b.vspEnt||0) + pays*topUp - rdo*7, sick: b.sicEnt === null ? null : (b.sicEnt||0) - sick*7, ann: b.annEnt === null ? null : (b.annEnt||0) - ann*7, asOf: sl.to };
+}
+function leaveTiles(){
+  const L = leaveNow();
+  if(!L) return `<div class="lvTiles"><div class="lvT lvNone">Add a payslip to see your RDOs, sick days and holidays left</div></div>`;
+  const tile = (label, h) => `<div class="lvT"><span class="lvN">${h === null ? "–" : (Math.round(h/7*10)/10).toLocaleString("en-AU")}</span><span class="lvL">${label}<br><small>${h === null ? "not on payslip" : "days left"}</small></span></div>`;
+  return `<div class="lvTiles">${tile("RDOs", L.rdo)}${tile("Sick", L.sick)}${tile("Holidays", L.ann)}</div>`;
+}
 function renderLeave(){
   const box = $("leaveBal");
   const slips = Object.values(S.payslips||{}).filter(x => x.bal && (x.bal.sicEnt !== null || x.bal.annEnt !== null)).sort((a,b) => a.to < b.to ? -1 : 1);
