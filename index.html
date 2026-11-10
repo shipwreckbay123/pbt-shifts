@@ -1122,6 +1122,17 @@ function scrPeriodStart(k){ const a = S.settings.scrAnchor || S.settings.anchor 
 function scrCount(start){ let n = 0; for(let i=0;i<28;i++){ const sh = S.shifts[add(start,i)]; if(sh && sh.type==="X") n += (sh.scr||"D").length; } return n; }
 function annualDayPay(k){ return step(k).min / 52 / 5 * 1.275; }
 function sickDayPay(k){ return Number(S.settings.leavePay) || 388.51; } // 7h × $55.50, as on your payslips
+// EBA 30.5: a VSE who doesn't work a public holiday or closed port day is paid 8 hours at the Grade 2 rate.
+// sh = the day's entry (or a draft from the day sheet). Returns {hol, amt} or null.
+// Any Day/Evening/Night/Irregular shift that belongs to the holiday (worked or planned) means it's worked instead.
+function holUnworked(k, sh){
+  if(!S.settings.phUnworked) return null;
+  const working = x => x && "DENI".includes(x.type) && x.type;
+  const hol = (sh && !working(sh) && sh.hol !== undefined) ? sh.hol : (S.hols[k] || "");
+  if(!hol) return null;
+  const covered = [add(k,-1), k, add(k,1)].some(dk => { const s2 = dk === k ? sh : S.shifts[dk]; return working(s2) && holDay(s2.type, startDate(dk, s2.type)) === k; });
+  return covered ? null : { hol, amt: r2(SHIFT_HOURS * hrx(step(k), 2)) };
+}
 function periodPay(from, to, includePlanned){ // inclusive range of days
   const rows = []; let gross=0, meals=0, leave=0, sick=0, annual=0, planned=0, plannedGross=0, plannedMeals=0;
   for(let k=from; k<=to; k=add(k,1)){
@@ -1131,22 +1142,20 @@ function periodPay(from, to, includePlanned){ // inclusive range of days
       if(sh.status==="worked"){ rows.push({k,sh,c}); gross += c.gross; meals += c.meal; }
       else { planned++; plannedGross += c.gross; plannedMeals += c.meal; if(includePlanned) rows.push({k,sh,c}); }
     }
-    if(sh && sh.type==="S" && !(S.hols[k] && S.settings.phUnworked)){ // personal/carer's leave: 1/5 of the weekly VSE Ops minimum salary (23.4.2); on a public holiday the holiday pay applies instead
+    if(sh && sh.type==="S" && !holUnworked(k, sh)){ // personal/carer's leave: 1/5 of the weekly VSE Ops minimum salary (23.4.2); on a public holiday the holiday pay applies instead
       const amt = sickDayPay(k); rows.push({k, sickPay:true, sh, c:{gross:amt}}); sick += amt;
     }
-    if(sh && sh.type==="A" && !sh.nopay && !(S.hols[k] && S.settings.phUnworked)){ // annual leave: 1/5 of weekly VSE minimum + 27.5% loading (22.5.2)
+    if(sh && sh.type==="A" && !sh.nopay && !holUnworked(k, sh)){ // annual leave: 1/5 of weekly VSE minimum + 27.5% loading (22.5.2)
       const amt = annualDayPay(k); rows.push({k, annPay:true, sh, c:{gross:amt}}); annual += amt;
     }
     if(sh && sh.type==="L" && sh.paid !== false){ // VSE self-funded leave day (7h at $55.50 on payslips)
       const amt = Number(S.settings.leavePay)||0;
       if(amt){ rows.push({k, leavePay:true, sh, c:{gross:amt}}); leave += amt; }
     }
-    // unworked public holiday / CPD payment (VSE): 8h x Grade 2
-    const hol = S.hols[k];
-    if(hol && S.settings.phUnworked && k <= todayKey()){
-      const workedThatDay = [add(k,-1), k, add(k,1)].some(dk => { const s2=S.shifts[dk]; if(!s2||s2.status!=="worked"||!"DEN".includes(s2.type)) return false; return holDay(s2.type, startDate(dk,s2.type))===k; });
-      if(!workedThatDay){ const amt = r2(SHIFT_HOURS*hrx(step(k),2)); rows.push({k, holPay:true, hol, c:{gross:amt}}); gross += amt; }
-    }
+    // unworked public holiday / CPD payment (VSE): 8h x Grade 2. Past and future days alike;
+    // a shift logged on the holiday (worked or planned) replaces it.
+    const hp = holUnworked(k, sh);
+    if(hp){ rows.push({k, holPay:true, hol:hp.hol, c:{gross:hp.amt}}); gross += hp.amt; }
   }
   return finishPeriod(from, to, {rows, gross, meals, leave, sick, annual, planned, plannedGross, plannedMeals});
 }
@@ -2222,7 +2231,10 @@ function syncSheet(){
   const c = paid ? calcShift(sheetDay, {...draft, hol: dt}) : null;
   const lp = Number(S.settings.leavePay)||0;
   renderWorth(c);
-  $("shPreview").innerHTML = draft.type==="A" && S.shifts[sheetDay] && S.shifts[sheetDay].nopay
+  const hp = !paid && draft.type !== "I" && draft.type !== "L" ? holUnworked(sheetDay, {...draft, hol: dt}) : null;
+  $("shPreview").innerHTML = hp
+    ? `<div><div class="lbl">${hp.hol==="CPD"?"Closed port day":"Public holiday"} not worked pays</div><div class="small muted">8 hours at the Grade 2 rate (EBA 30.5)${draft.type==="S"||draft.type==="A"?`, instead of ${draft.type==="S"?"sick":"annual leave"} pay`:""}</div></div><div class="v num">${money(hp.amt,2)}</div>`
+    : draft.type==="A" && S.shifts[sheetDay] && S.shifts[sheetDay].nopay
     ? `<div class="small muted">Weekend of an annual leave week. The week is paid as 5 days (Mon–Fri), so this day isn't paid on its own.</div>`
     : draft.type==="A" && !$("shAlWeekBox").hidden && $("shAlWeek").checked
     ? `<div><div class="lbl">Annual leave week pays</div><div class="small muted">1/52 of the VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay)*5,2)}</div>`
