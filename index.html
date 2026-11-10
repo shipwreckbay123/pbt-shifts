@@ -179,6 +179,14 @@ tr.total td{font-weight:600;border-bottom:0}
 .kpi.hl{background:var(--navy);color:#fff;border-color:var(--navy)}
 .kpi.hl .k{color:rgba(255,255,255,.75)}
 .kpi.hl .v{color:var(--accent)}
+.bonusKpi{cursor:text;display:block;border:1.5px dashed var(--accent)}
+.bonusKpi.set{border-style:solid}
+.bonusKpi .edit{font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap}
+.bonusRow{display:flex;align-items:baseline}
+.bonusRow input{width:100%;min-width:0;border:0;background:transparent;padding:0;margin:0;color:inherit;outline:none;box-shadow:none;height:auto;min-height:0;-moz-appearance:textfield}
+.bonusRow input::-webkit-outer-spin-button,.bonusRow input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.bonusRow input:focus{border-bottom:2px solid var(--accent)}
+.linkBtn{background:none;border:0;padding:0;font-size:12px;color:var(--muted);text-decoration:underline;cursor:pointer}
 .note{font-size:13px;padding:10px 12px;border-radius:10px;background:rgba(0,230,154,.1);border:1px solid rgba(0,200,140,.4)}
 
 /* year */
@@ -661,7 +669,7 @@ details.imp .btn{min-height:40px;font-size:14px}
     <h2>Payslip extras</h2>
     <div class="card stack">
       <div class="field"><label for="setBonus">Bonus per pay (estimate)</label><input type="number" id="setBonus" step="0.01" min="0" inputmode="decimal">
-        <div class="small muted">Your last four payslips had $228–$280. It changes each pay, so this is a guess.</div></div>
+        <div class="small muted">Your last four payslips had $228–$280. This is the guide used for every pay. To put in a pay's real bonus, tap the bonus box on the Pay tab.</div></div>
       <div class="field"><label for="setVsePaid">VSE PAID deduction per pay</label><input type="number" id="setVsePaid" step="0.01" min="0" inputmode="decimal">
         <div class="small muted">Comes out before tax and pays for your self-funded VSE days.</div></div>
       <div class="field"><label for="setLeavePay">Pay for a self-funded RDO</label><input type="number" id="setLeavePay" step="0.01" min="0" inputmode="decimal">
@@ -1144,7 +1152,8 @@ function finishPeriod(from, to, p){
   const overScr = scrCount(scrPeriodStart(from)) > SCR_LIMIT;
   const minF = overScr ? 0 : step(from).min/26;
   const slip = (S.payslips||{})[from];          // real bonus / VSE PAID from your payslip when you've added it
-  const bonus = slip ? Number(slip.bonus)||0 : Number(S.settings.bonus)||0;
+  const own = (S.bonuses||{})[from];          // bonus you typed in on the Pay tab for this fortnight
+  const bonus = slip ? Number(slip.bonus)||0 : own != null ? Number(own)||0 : Number(S.settings.bonus)||0;
   const vsePaid = slip ? Number(slip.vsePaid)||0 : Number(S.settings.vsePaid)||0;
   const earned = p.gross + p.leave + (p.sick||0) + (p.annual||0); // leave counts toward the minimum (28 Sep–11 Oct payslip)
   const paid = Math.max(earned, minF) + bonus;
@@ -1407,6 +1416,14 @@ function renderGaps(from, to){
         <button class="btn" style="min-height:38px;padding:0 9px;font-size:13px" data-gap="${k}" data-as="O">Day off</button>
       </div></div>`; }).join("")}</div>`;
 }
+// Bonus changes every pay (containers moved), so it can be typed in for each fortnight on the Pay tab.
+function bonusCard(p){
+  if((S.payslips||{})[curF]) return `<div class="card kpi"><div class="k">Bonus (payslip)</div><div class="v num">${money(p.bonus,2)}</div></div>`;
+  const own = (S.bonuses||{})[curF] != null;
+  return `<label class="card kpi bonusKpi${own?" set":""}" for="bonusIn"><div class="k">${own ? "Bonus (yours)" : "Bonus (est.)"} <span class="edit">✎ tap to change</span></div>
+    <div class="bonusRow"><span class="v num">$</span><input id="bonusIn" class="v num" type="number" inputmode="decimal" step="0.01" min="0" value="${p.bonus.toFixed(2)}" aria-label="Bonus this pay"></div>
+    <div class="small muted num" style="margin-top:2px">Guide: ${money(Number(S.settings.bonus)||0,2)} estimate${own ? ` · <button type="button" class="linkBtn" id="bonusReset">use it</button>` : ""}</div></label>`;
+}
 function renderPay(){
   if(!curF) curF = fortnightStart(todayKey());
   const to = add(curF,13);
@@ -1419,7 +1436,7 @@ function renderPay(){
     <div class="card kpi"><div class="k">Tax (est.)</div><div class="v num">${money(p.tax,2)}</div></div>
     <div class="card kpi"><div class="k">Super (12%)</div><div class="v num">${money(p.superAmt,2)}</div></div>
     <div class="card kpi"><div class="k">Shifts + allowances</div><div class="v num">${money(p.gross,2)}</div></div>
-    <div class="card kpi"><div class="k">Bonus (est.)</div><div class="v num">${money(p.bonus,2)}</div></div>`;
+    ${bonusCard(p)}`;
   const slip = (S.payslips||{})[curF];
   let note = slip ? `<div class="card" style="margin-bottom:10px"><div class="lbl">Your payslip${slip.payDate?` (paid ${nice(slip.payDate)})`:""}</div>
     <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Payslip</th><th class="r">App</th></tr>
@@ -1431,7 +1448,7 @@ function renderPay(){
     ${checkHTML(slip)}</div>` : "";
   const upg = upgradeStats(curF, to);
   if(upg.shifts) note += `<div class="small num" style="margin-bottom:6px"><b>Upgrades this pay:</b> ${upg.shifts} shift${upg.shifts>1?"s":""}, ${upg.hours} h above Grade ${upg.base}, worth <b>${money(upg.extra,2)}</b> extra.</div>`;
-  note += `<div class="small muted num">Take-home = gross − tax − VSE PAID (${money(p.vsePaid,2)}). Meal allowance (${money(p.meals,2)}) isn't taxed. ${slip ? "Bonus and VSE PAID are from your payslip." : "Bonus is an estimate you can change in Setup."}</div>`;
+  note += `<div class="small muted num">Take-home = gross − tax − VSE PAID (${money(p.vsePaid,2)}). Meal allowance (${money(p.meals,2)}) isn't taxed. ${slip ? "Bonus and VSE PAID are from your payslip." : (S.bonuses||{})[curF] != null ? "Bonus is the amount you typed in for this pay." : "Bonus is an estimate. Tap the bonus box to put in this pay's real bonus."}</div>`;
   if(p.overScr) note += `<div class="note" style="margin-top:8px">More than 27 scratches in the 28-day period, so the VSE minimum salary doesn't apply to this pay (EBA 18.1.3).</div>`;
   if(p.topUp>0) note += `<div class="note" style="margin-top:8px">You're under the VSE minimum (${money(p.minF,2)}) by <b class="num">${money(p.topUp,2)}</b>. You'll still be paid the minimum, and that gap comes back out of later pays that go over it.</div>`;
   if(p.planned>0){
@@ -2369,6 +2386,18 @@ $("setShowPanel").onchange = e => { S.settings.showPanel = e.target.checked; per
 $("setPanelStart").onchange = e => { if(e.target.value){ S.settings.panelStart = e.target.value; S.settings.panel = panelFromSettings(S.settings) || "custom"; persist(); renderAll(); } };
 $("setPanelCycle").onchange = e => { S.settings.panelCycle = e.target.value.toUpperCase().replace(/[^DENI]/g,""); S.settings.panel = panelFromSettings(S.settings) || "custom"; persist(); renderAll(); };
 $("panelBtns").onclick = e => { const b = e.target.closest("[data-panel]"); if(!b) return; setPanel(Number(b.dataset.panel)); toast(`Panel ${b.dataset.panel} is on your calendar`); };
+$("payKpis").addEventListener("change", e => {
+  if(e.target.id !== "bonusIn") return;
+  const v = e.target.value.trim(); S.bonuses = { ...(S.bonuses || {}) };
+  if(v === "") delete S.bonuses[curF]; else S.bonuses[curF] = Math.max(0, Math.round((Number(v)||0)*100)/100);
+  persist(); renderAll(); toast(v === "" ? "Bonus back to the estimate" : `Bonus for this pay: ${money(S.bonuses[curF],2)}`);
+});
+$("payKpis").addEventListener("keydown", e => { if(e.target.id === "bonusIn" && e.key === "Enter") e.target.blur(); });
+$("payKpis").addEventListener("click", e => {
+  if(e.target.id !== "bonusReset") return; e.preventDefault();
+  S.bonuses = { ...(S.bonuses || {}) }; delete S.bonuses[curF]; persist(); renderAll(); toast("Bonus back to the estimate");
+});
+$("payKpis").addEventListener("focusin", e => { if(e.target.id === "bonusIn") e.target.select(); });
 for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
   $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
 $("jobGradeList").onchange = e => { const id = e.target.dataset.jobg; if(!id) return; const j = JOB(id), g = Number(e.target.value);
