@@ -799,6 +799,10 @@ details.imp .btn{min-height:40px;font-size:14px}
       <button class="btn danger" id="shClear">Clear day</button>
       <button class="btn" id="shClose">Cancel</button>
     </div>
+    <div class="btns" id="shClearAlBox" hidden>
+      <button class="btn" id="shClearOne">Just this day</button>
+      <button class="btn danger" id="shClearRun" hidden></button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -2201,6 +2205,7 @@ function syncSheet(){
   $("shWorkBox").hidden = !paid && draft.type!=="I";
   $("shScrBox").hidden = draft.type !== "X";
   $("shAlWeekBox").hidden = draft.type !== "A" || !!(S.shifts[sheetDay] && S.shifts[sheetDay].type === "A");
+  syncClearBtns();
   if(draft.type === "X"){
     if(!draft.scr) draft.scr = defaultScr(sheetDay);
     document.querySelectorAll("#shScr button").forEach(b => b.setAttribute("aria-pressed", String(draft.scr.includes(b.dataset.v))));
@@ -2370,7 +2375,34 @@ $("shWeek").onclick = () => {
   }
   persist([sheetDay]); closeSheet(); renderAll(); toast(`Filled ${n+1} days to ${nice(end)}`);
 };
-$("shClear").onclick = () => { delete S.shifts[sheetDay]; persist(); closeSheet(); renderAll(); toast("Cleared"); };
+// Annual leave is booked a whole Mon–Sun week at a time, so clearing it clears the whole week too.
+const isAL = d => !!(S.shifts[d] && S.shifts[d].type === "A");
+function alWeekKeys(k){ const mon = monday(k); return [0,1,2,3,4,5,6].map(i => add(mon,i)).filter(isAL); }
+function alRunKeys(k){ // every annual leave day joined to this one with no gap
+  let a = k, b = k;
+  while(isAL(add(a,-1))) a = add(a,-1);
+  while(isAL(add(b,1))) b = add(b,1);
+  const out = []; for(let d=a; d<=b; d=add(d,1)) out.push(d); return out;
+}
+function syncClearBtns(){
+  const al = sheetDay && isAL(sheetDay);
+  $("shClearAlBox").hidden = !al;
+  if(!al){ $("shClear").textContent = "Clear day"; return; }
+  const wk = alWeekKeys(sheetDay), run = alRunKeys(sheetDay), mon = monday(sheetDay);
+  const dm = d => D(d).getUTCDate() + " " + MON[D(d).getUTCMonth()];
+  $("shClear").innerHTML = `Clear leave week<br><span class="small">${dm(mon)} – ${dm(add(mon,6))}</span>`;
+  $("shClearOne").hidden = wk.length <= 1;
+  $("shClearRun").hidden = run.length <= wk.length;
+  $("shClearRun").innerHTML = `Clear all leave<br><span class="small">${run.length} days · ${dm(run[0])} – ${dm(run[run.length-1])}</span>`;
+  $("shClearAlBox").hidden = $("shClearOne").hidden && $("shClearRun").hidden;
+}
+function clearKeys(keys, msg){ keys.forEach(d => delete S.shifts[d]); persist(); closeSheet(); renderAll(); toast(msg); }
+$("shClear").onclick = () => {
+  if(isAL(sheetDay)){ const mon = monday(sheetDay); clearKeys(alWeekKeys(sheetDay), `Annual leave cleared ${nice(mon)} – ${nice(add(mon,6))}`); return; }
+  clearKeys([sheetDay], "Cleared");
+};
+$("shClearOne").onclick = () => clearKeys([sheetDay], "Cleared");
+$("shClearRun").onclick = () => { const run = alRunKeys(sheetDay); clearKeys(run, `Annual leave cleared ${nice(run[0])} – ${nice(run[run.length-1])}`); };
 $("shClose").onclick = closeSheet;
 $("scrim").onclick = closeSheet;
 document.addEventListener("keydown", e => { if(e.key==="Escape" && sheetDay) closeSheet(); });
