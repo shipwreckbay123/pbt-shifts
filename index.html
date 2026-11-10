@@ -324,8 +324,13 @@ body[data-tab="chat"] .composer.on{display:flex;position:fixed;left:0;right:0;bo
 body[data-tab="chat"] .wrap{padding-bottom:calc(170px + env(safe-area-inset-bottom, 0px))}
 body[data-tab="chat"] .toast{bottom:calc(140px + env(safe-area-inset-bottom, 0px))}
 #chatMe a{color:var(--ink);font-weight:600}
+html,body{overscroll-behavior-x:none}
 .view{display:none}
 .view.on{display:block}
+.view.slideL{animation:slideL .2s ease-out}.view.slideR{animation:slideR .2s ease-out}
+@keyframes slideL{from{transform:translateX(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes slideR{from{transform:translateX(-40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion: reduce){.view.slideL,.view.slideR{animation:none}}
 .toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.on{opacity:1}
 .empty{text-align:center;padding:18px 8px;color:var(--muted)}
@@ -2317,6 +2322,41 @@ document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("cl
   window.scrollTo(0,0);
   if(b.dataset.v === "chat") chatOpened();
 }));
+// Swipe left / right anywhere on the page to move to the next / previous tab
+// (Calendar → Pay → Year → Port → Chat → Setup). Ignores swipes on things that scroll sideways,
+// the wind chart, text boxes, an open day sheet, and swipes starting at the screen edge (iPhone back gesture).
+(() => {
+  const tabs = () => [...document.querySelectorAll("nav.tabs button")];
+  let x0 = null, y0 = 0, t0 = 0;
+  const skip = el => {
+    for(let e = el; e && e !== document.body; e = e.parentElement){
+      if(e.matches("input,textarea,select,#sheet,#wxHit,.composer")) return true;
+      const ox = getComputedStyle(e).overflowX;
+      if((ox === "auto" || ox === "scroll") && e.scrollWidth > e.clientWidth + 2) return true;
+    }
+    return false;
+  };
+  document.addEventListener("touchstart", e => {
+    x0 = null;
+    if(e.touches.length !== 1 || sheetDay || document.querySelector(".sheet.open")) return;
+    const t = e.touches[0];
+    if(t.clientX < 24 || t.clientX > innerWidth - 24 || skip(e.target)) return;
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+  }, {passive:true});
+  document.addEventListener("touchend", e => {
+    if(x0 === null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if(Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8 || Date.now() - t0 > 700) return;
+    if(window.getSelection && String(window.getSelection())) return;
+    const list = tabs(), cur = list.findIndex(b => b.getAttribute("aria-selected") === "true");
+    const next = list[cur + (dx < 0 ? 1 : -1)];
+    if(!next) return;
+    next.click();
+    const v = document.getElementById("v-" + next.dataset.v);
+    v.classList.remove("slideL","slideR"); void v.offsetWidth; v.classList.add(dx < 0 ? "slideL" : "slideR");
+    v.addEventListener("animationend", () => v.classList.remove("slideL","slideR"), {once:true});
+  }, {passive:true});
+})();
 $("mPrev").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()-1); curMonth = K(d).slice(0,7); renderMonth(); };
 $("mNext").onclick = () => { const d = D(curMonth+"-01"); d.setUTCMonth(d.getUTCMonth()+1); curMonth = K(d).slice(0,7); renderMonth(); };
 $("fPrev").onclick = () => { curF = add(curF,-14); renderPay(); };
