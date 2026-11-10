@@ -293,6 +293,7 @@ textarea{min-height:90px;font-size:12px;font-family:ui-monospace,Menlo,Consolas,
 .sheet.open{transform:none;visibility:visible;transition:transform .22s ease}
 .sheet .in{max-width:540px;margin:0 auto;padding:16px 16px 28px;display:flex;flex-direction:column;gap:14px}
 .sheet .grab{width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto}
+.sheet{overscroll-behavior:contain}
 .sheet h2{margin:0}
 .preview{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .preview .v{font:700 30px var(--display);color:var(--ink)}
@@ -2417,6 +2418,29 @@ $("shClearOne").onclick = () => clearKeys([sheetDay], "Cleared");
 $("shClearRun").onclick = () => { const run = alRunKeys(sheetDay); clearKeys(run, `Annual leave cleared ${nice(run[0])} – ${nice(run[run.length-1])}`); };
 $("shClose").onclick = closeSheet;
 $("scrim").onclick = closeSheet;
+// Swipe down to close the day sheet (works when the sheet is scrolled to the top, like iPhone/Android sheets).
+(() => {
+  const sh = $("sheet"); let y0 = null, t0 = 0, dy = 0, drag = false;
+  sh.addEventListener("touchstart", e => {
+    if(e.touches.length !== 1 || sh.scrollTop > 0 || e.target.closest("input,textarea,select")){ y0 = null; return; }
+    y0 = e.touches[0].clientY; t0 = Date.now(); dy = 0; drag = false;
+  }, {passive:true});
+  sh.addEventListener("touchmove", e => {
+    if(y0 === null) return;
+    dy = e.touches[0].clientY - y0;
+    if(!drag){ if(dy > 8 && sh.scrollTop <= 0) drag = true; else if(dy < -4){ y0 = null; return; } else return; }
+    e.preventDefault();
+    sh.style.transition = "none"; sh.style.transform = `translateY(${Math.max(0, dy)}px)`;
+  }, {passive:false});
+  const end = () => {
+    if(y0 === null) return; y0 = null;
+    if(!drag) return; drag = false;
+    sh.style.transition = ""; sh.style.transform = "";
+    const fast = dy > 40 && dy / Math.max(1, Date.now() - t0) > 0.5;
+    if(dy > 110 || fast) closeSheet();
+  };
+  sh.addEventListener("touchend", end); sh.addEventListener("touchcancel", end);
+})();
 document.addEventListener("keydown", e => { if(e.key==="Escape" && sheetDay) closeSheet(); });
 
 // settings
