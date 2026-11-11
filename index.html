@@ -1712,50 +1712,47 @@ function renderUpgrades(){
     : `<div class="small muted" style="margin-top:6px">No upgrades logged as worked yet. Pick a job like "RTG + tug" or "Fork + fork" when you log a shift and it shows up here.</div>`)
     + (miss.n ? `<div class="note" style="margin-top:8px;border-color:var(--ph);background:rgba(210,60,60,.07)">Payslip check flagged <b>${miss.n} possibly missed upgrade${miss.n>1?"s":""}</b>${miss.amt>0?` (about ${money(miss.amt,2)})`:""}. Details are on the Pay tab for each fortnight.</div>` : "");
 }
-// Leave balances: start from your last payslip, then keep going by themselves from the days you log:
-//  - sick / annual leave / RDO days logged since take 7 hours off each,
-//  - every pay since adds what you earn: VSE bank + VSE PAID ÷ $55.50 an hour (matches Sep–Oct payslips),
-//    annual leave + 175 h a year (5 weeks, clause 22.3) and sick + 91 h a year (13 days, clause 23.3.1), i.e. per
-//    fortnight ÷ 26. If you've added two payslips a fortnight apart, it copies how your own payslips moved instead
-//    (whether it lands in ENT or ACC), so it follows DP World's payroll rather than our guess.
+// Leave balances: start from your last payslip, then keep going by themselves from the days you log.
+// How DP World's payroll does it (checked on payslips May–Aug 2026):
+//  - "ACC" (accrued) grows every day: annual leave 175 h a year (5 weeks, EBA 22.3), sick 91 h a year
+//    (13 days, EBA 23.3.1), i.e. 6.71 h and 3.49 h a fortnight.
+//  - On 1 July the year's ACC moves into "ENT" (entitled) and ACC starts again from 0.
+//  - Leave you take comes off ENT, 7 hours a day (sick can go below 0 until 1 July).
+//  - VSE bank (RDOs): + VSE PAID ÷ $55.50 an hour each pay, − 7 h per RDO.
 // So once your payslips are in, you can just log days by hand and only check a new payslip against the app.
-const LEAVE_RATE = { ann: 175/26, sick: 91/26 };
+const LEAVE_YEAR = { ann: 175, sick: 91 };
 function leaveSlips(){ return Object.values(S.payslips||{}).filter(x => x.bal && (x.bal.sicEnt !== null || x.bal.annEnt !== null)).sort((a,b) => a.to < b.to ? -1 : 1); }
 function leaveDays(from, to){   // sick / annual / RDO days logged between two dates (both ends included)
   let sick=0, ann=0, rdo=0;
   for(const k in S.shifts){ if(k >= from && k <= to){ const sh = S.shifts[k], t = sh.type; if(t==="S") sick++; else if(t==="A" && !sh.nopay) ann++; else if(t==="L") rdo++; } }
   return {sick, ann, rdo};
 }
-// How much each kind of leave goes up per pay, learnt from your own payslips where it can be
-function leaveRates(slips){
-  const med = a => { const x = [...a].sort((p,q) => p-q); return x.length ? x[Math.floor(x.length/2)] : null; };
-  const out = {};
-  for(const [kind, ek, ak, used] of [["ann","annEnt","annAcc","ann"],["sick","sicEnt","sicAcc","sick"]]){
-    const base = LEAVE_RATE[kind], dE = [], dA = [];
-    for(let i = 1; i < slips.length; i++){
-      const a = slips[i-1], b = slips[i];
-      if(add(a.from,14) !== b.from || a.bal[ek] === null || b.bal[ek] === null) continue;
-      const taken = leaveDays(b.from, b.to)[used] * 7;
-      const e = b.bal[ek] - a.bal[ek] + taken, c = (b.bal[ak] ?? 0) - (a.bal[ak] ?? 0);
-      const ok = v => v > -0.5 && v < base*1.6 + 0.5;          // skips a pay where the yearly roll-over happened
-      if(ok(e) && ok(c) && e + c > 0.5){ dE.push(e); dA.push(c); }
+// Balances from payslip `sl`, accrued up to `to`, minus leave logged up to `usedTo`, plus `pays` VSE bank top-ups
+function leaveFrom(sl, to, usedTo, pays){
+  const b = sl.bal, used = leaveDays(add(sl.to,1), usedTo);
+  let aE = b.annEnt, aA = b.annAcc, sE = b.sicEnt, sA = b.sicAcc, rolled = false;
+  const grow = (ent, acc, perDay) => acc === null || acc === undefined ? [ent === null ? null : ent + perDay, acc] : [ent, acc + perDay];
+  for(let d = add(sl.to,1); d <= to; d = add(d,1)){
+    if(d.slice(5) === "07-01"){   // new leave year: accrued moves into entitled
+      if(aE !== null && aA != null){ aE += r2(aA); aA = 0; }
+      if(sE !== null && sA != null){ sE += r2(sA); sA = 0; }
+      rolled = true;
     }
-    out[kind] = dE.length ? { ent: Math.max(0, med(dE)), acc: Math.max(0, med(dA)), from: "slips", n: dE.length }
-                          : { ent: base, acc: 0, from: "eba", n: 0 };
+    [aE, aA] = grow(aE, aA, LEAVE_YEAR.ann/365); [sE, sA] = grow(sE, sA, LEAVE_YEAR.sick/365);
   }
-  return out;
+  const topUp = (Number(sl.vsePaid)||0) / ((Number(S.settings.leavePay)||388.51)/7);
+  const minus = (x, h) => x === null || x === undefined ? null : x - h;
+  return { sl, pays, used, topUp, rolled, to,
+    ann: minus(aE, used.ann*7), annAcc: aA ?? null, sick: minus(sE, used.sick*7), sickAcc: sA ?? null,
+    rdo: b.vspEnt === null ? null : b.vspEnt + pays*topUp - used.rdo*7, asOf: sl.to };
 }
-// Hours now for each kind of leave (null without a payslip). Used by the header, the start page and the Year tab.
+// Now: accrued to the end of the last fortnight that's been paid (so it lines up with your newest payslip),
+// minus every leave day logged up to today.
 function leaveNow(){
   const slips = leaveSlips(), sl = slips[slips.length-1]; if(!sl) return null;
-  const today = todayKey(), used = leaveDays(add(sl.to,1), today), b = sl.bal;
+  const today = todayKey();
   let pays = 0; for(let f = add(sl.from,14); add(f,17) <= today; f = add(f,14)) pays++;
-  const topUp = (Number(sl.vsePaid)||0) / ((Number(S.settings.leavePay)||388.51)/7), R = leaveRates(slips);
-  const v = (x, up) => x === null || x === undefined ? null : x + up;
-  return { sl, pays, used, topUp, R,
-    rdo: v(b.vspEnt, pays*topUp - used.rdo*7),
-    sick: v(b.sicEnt, pays*R.sick.ent - used.sick*7), sickAcc: v(b.sicAcc, pays*R.sick.acc),
-    ann: v(b.annEnt, pays*R.ann.ent - used.ann*7), annAcc: v(b.annAcc, pays*R.ann.acc), asOf: sl.to };
+  return leaveFrom(sl, add(sl.to, 14*pays), today, pays);
 }
 function leaveTiles(){
   const L = leaveNow();
@@ -1766,20 +1763,18 @@ function leaveTiles(){
 function renderLeave(){
   const box = $("leaveBal"), L = leaveNow();
   if(!L){ box.innerHTML = `<div class="lbl">Leave balances</div><div class="small muted" style="margin-top:6px">Add a payslip PDF to see your sick, annual leave and RDO balances. They're at the bottom of each payslip. After that they keep going by themselves from the days you log.</div>`; return; }
-  const {sl, pays, used, topUp, R} = L, b = sl.bal;
+  const {sl, pays, used, topUp, rolled} = L, b = sl.bal;
   const H = h => `${h<0?"−":""}${Math.abs(h).toFixed(2)} h`, Dd = h => `${h<0?"−":""}${Math.abs(h/7).toFixed(1)} days`;
-  const earned = (kind) => { const r = R[kind], per = r.ent + r.acc; return pays ? `+${(pays*per).toFixed(2)} h from ${pays} pay${pays>1?"s":""}` : "no pays yet"; };
-  const takenTxt = (n, one, many) => n ? `, −${n*7} h for ${n} ${n>1?many:one}` : "";
+  const taken = (n, one, many) => n ? `−${n*7} h for ${n} ${n>1?many:one} logged since` : "none logged since";
   const row = (name, entNow, entSlip, accNow, note) => `<tr><td>${name}<div class="small muted">${note}</div></td><td class="r">${entSlip===null?"–":H(entNow)}<div class="small muted">${entSlip===null?"":Dd(entNow)}</div></td><td class="r">${accNow===null||accNow===undefined?"–":H(accNow)}</td></tr>`;
-  const how = k => R[k].from === "slips" ? `learnt from ${R[k].n} pay${R[k].n>1?"s":""} on your payslips` : (k === "ann" ? "5 weeks a year (EBA 22.3)" : "13 days a year (EBA 23.3.1)");
   const rdoNow = Math.max(0, L.rdo || 0);
   box.innerHTML = `<div class="lbl">Leave balances</div>
     <table class="num" style="margin-top:6px"><tr><th></th><th class="r">Entitled now</th><th class="r">Accrued</th></tr>
-    ${row("Sick (personal)", L.sick, b.sicEnt, L.sickAcc, `${earned("sick")}${takenTxt(used.sick, "sick day", "sick days")} since`)}
-    ${row("Annual leave", L.ann, b.annEnt, L.annAcc, `${earned("ann")}${takenTxt(used.ann, "day", "days")} since`)}
-    ${row("VSE bank (RDOs)", L.rdo, b.vspEnt, null, `${pays ? `+${(pays*topUp).toFixed(2)} h from ${pays} pay${pays>1?"s":""}` : "no pays yet"}${takenTxt(used.rdo, "RDO", "RDOs")} since`)}
+    ${row("Sick (personal)", L.sick, b.sicEnt, L.sickAcc, taken(used.sick, "sick day", "sick days"))}
+    ${row("Annual leave", L.ann, b.annEnt, L.annAcc, taken(used.ann, "day", "days"))}
+    ${row("VSE bank (RDOs)", L.rdo, b.vspEnt, null, `${pays ? `+${(pays*topUp).toFixed(2)} h from ${pays} pay${pays>1?"s":""}` : "no pays since"}${used.rdo ? `, −${used.rdo*7} h for ${used.rdo} RDO${used.rdo>1?"s":""}` : ""}`)}
     </table>
-    <div class="small muted" style="margin-top:6px">Starts from your payslip for ${nice(sl.from)} – ${nice(sl.to)}, then keeps going by itself: each pay adds what you earn (annual leave ${(R.ann.ent+R.ann.acc).toFixed(2)} h, ${how("ann")}; sick ${(R.sick.ent+R.sick.acc).toFixed(2)} h, ${how("sick")}; VSE bank ${topUp.toFixed(2)} h from VSE PAID), and each sick, annual leave or RDO day you log takes 7 hours off. About ${Math.floor(rdoNow/7)} RDO${Math.floor(rdoNow/7)===1?"":"s"} left in the VSE bank. Check it against your next payslip — no need to add the payslip unless it's out.</div>`;
+    <div class="small muted" style="margin-top:6px">Starts from your payslip for ${nice(sl.from)} – ${nice(sl.to)} and keeps going by itself, the way DP World's payroll does it: Accrued goes up every day (annual leave 6.71 h, sick 3.49 h a fortnight), on 1 July it moves into Entitled${rolled ? " (that's happened since your last payslip)" : ""}, and each sick, annual leave or RDO day you log comes off Entitled. The VSE bank gets ${topUp.toFixed(2)} h each pay from VSE PAID. Worked out to ${nice(L.to)}, the end of your last paid fortnight. About ${Math.floor(rdoNow/7)} RDO${Math.floor(rdoNow/7)===1?"":"s"} left. Check it against your next payslip — no need to add the payslip unless it's out.</div>`;
 }
 function renderYear(){
   renderLeave();
