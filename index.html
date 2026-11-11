@@ -685,8 +685,8 @@ details.imp .btn{min-height:40px;font-size:14px}
 
     <h2>Payslip extras</h2>
     <div class="card stack">
-      <div class="field"><label for="setBonus">Bonus per pay (estimate)</label><input type="number" id="setBonus" step="0.01" min="0" inputmode="decimal">
-        <div class="small muted">Your last four payslips had $228–$280. This is the guide used for every pay. To put in a pay's real bonus, tap the bonus box on the Pay tab.</div></div>
+      <div class="field"><label for="setBonus">Bonus per pay (guide)</label><input type="number" id="setBonus" step="0.01" min="0" inputmode="decimal">
+        <div class="small muted" id="setBonusHelp"></div></div>
       <div class="field"><label for="setVsePaid">VSE PAID deduction per pay</label><input type="number" id="setVsePaid" step="0.01" min="0" inputmode="decimal">
         <div class="small muted">Comes out before tax and pays for your self-funded VSE days.</div></div>
       <div class="field"><label for="setLeavePay">Pay for a self-funded RDO</label><input type="number" id="setLeavePay" step="0.01" min="0" inputmode="decimal">
@@ -981,7 +981,7 @@ const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">"
 function blankState(){
   return { v:2, updatedAt:0, shifts:{}, payslips:{}, hols:{...DEFAULT_HOLS},
     settings:{ v:2, grade:2, night:"start", anchor:"2026-10-26", phUnworked:true,
-      bonus:240, vsePaid:149.43, leavePay:388.51,
+      bonus:null, vsePaid:149.43, leavePay:388.51,
       panelStart:"2026-10-27", panelCycle:"NEID", showPanel:true, scrAnchor:"2026-10-26", yearMode:"fy" } };
 }
 // From payslips: pay fortnights run Mon–Sun (e.g. 12 Oct – 25 Oct 2026, paid the Thursday after);
@@ -996,6 +996,8 @@ function migrate(st){
     for(const k in st.shifts){ if(st.shifts[k].meal === false) delete st.shifts[k].meal; }
   }
   for(const k in st.shifts){ const s = st.shifts[k]; if(s.auto === "six" && s.note === "Must be off: 6 in a row") s.note = ""; }
+  // Nov 2026: the bonus guide is worked out from each person's own payslips (was a fixed $240 for everyone; done once)
+  if(!st.settings.bonusAutoV1){ st.settings.bonus = null; st.settings.bonusAutoV1 = 1; }
   // Nov 2026: days marked Off that aren't 6 and out are Left off (done once)
   if(!st.settings.leftOffV1){
     for(const k in st.shifts){ const s = st.shifts[k]; if(s.type === "O" && s.auto !== "six"){ s.type = "U"; s.auto = "left"; } }
@@ -1186,6 +1188,22 @@ function periodPay(from, to, includePlanned){ // inclusive range of days
   }
   return finishPeriod(from, to, {rows, gross, meals, leave, sick, annual, planned, plannedGross, plannedMeals});
 }
+// Bonus guide for pays with no payslip and no typed-in bonus: your own figure from Setup if you put one in,
+// otherwise the average bonus over your imported payslips (pays with no bonus, e.g. a fortnight on leave, are left out).
+// No payslips yet = $0, so new users don't get someone else's bonus.
+function bonusGuide(){
+  const set = S.settings.bonus;
+  if(set != null && set !== "") return { amt: Math.max(0, Number(set)||0), n: 0, src: "set" };
+  const b = Object.values(S.payslips || {}).map(x => Number(x.bonus) || 0).filter(x => x > 0);
+  if(!b.length) return { amt: 0, n: 0, src: "none" };
+  return { amt: Math.round(b.reduce((a, x) => a + x, 0) / b.length * 100) / 100, n: b.length, src: "slips",
+    lo: Math.min(...b), hi: Math.max(...b) };
+}
+function bonusGuideText(g){
+  if(g.src === "set") return "your own guide (Setup)";
+  if(g.src === "slips") return `average of ${g.n} payslip${g.n > 1 ? "s" : ""}`;
+  return "no payslips yet";
+}
 // Turn shift earnings into a payslip: minimum salary, bonus, VSE leave, tax (meal allowance is tax-free,
 // VSE PAID comes out before tax), super (12% of gross except VSE leave pay).
 function finishPeriod(from, to, p){
@@ -1193,7 +1211,7 @@ function finishPeriod(from, to, p){
   const minF = overScr ? 0 : step(from).min/26;
   const slip = (S.payslips||{})[from];          // real bonus / VSE PAID from your payslip when you've added it
   const own = (S.bonuses||{})[from];          // bonus you typed in on the Pay tab for this fortnight
-  const bonus = slip ? Number(slip.bonus)||0 : own != null ? Number(own)||0 : Number(S.settings.bonus)||0;
+  const bonus = slip ? Number(slip.bonus)||0 : own != null ? Number(own)||0 : bonusGuide().amt;
   const vsePaid = slip ? Number(slip.vsePaid)||0 : Number(S.settings.vsePaid)||0;
   const earned = p.gross + p.leave + (p.sick||0) + (p.annual||0); // leave counts toward the minimum (28 Sep–11 Oct payslip)
   const paid = Math.max(earned, minF) + bonus;
@@ -1462,7 +1480,7 @@ function bonusCard(p){
   const own = (S.bonuses||{})[curF] != null;
   return `<label class="card kpi bonusKpi${own?" set":""}" for="bonusIn"><div class="k">${own ? "Bonus (yours)" : "Bonus (est.)"} <span class="edit">✎ tap to change</span></div>
     <div class="bonusRow"><span class="v num">$</span><input id="bonusIn" class="v num" type="number" inputmode="decimal" step="0.01" min="0" value="${p.bonus.toFixed(2)}" aria-label="Bonus this pay"></div>
-    <div class="small muted num" style="margin-top:2px">Guide: ${money(Number(S.settings.bonus)||0,2)} estimate${own ? ` · <button type="button" class="linkBtn" id="bonusReset">use it</button>` : ""}</div></label>`;
+    <div class="small muted num" style="margin-top:2px">Guide: ${money(bonusGuide().amt,2)} · ${bonusGuideText(bonusGuide())}${own ? ` · <button type="button" class="linkBtn" id="bonusReset">use it</button>` : ""}</div></label>`;
 }
 function renderPay(){
   if(!curF) curF = fortnightStart(todayKey());
@@ -1488,7 +1506,7 @@ function renderPay(){
     ${checkHTML(slip)}</div>` : "";
   const upg = upgradeStats(curF, to);
   if(upg.shifts) note += `<div class="small num" style="margin-bottom:6px"><b>Upgrades this pay:</b> ${upg.shifts} shift${upg.shifts>1?"s":""}, ${upg.hours} h above Grade ${upg.base}, worth <b>${money(upg.extra,2)}</b> extra.</div>`;
-  note += `<div class="small muted num">Take-home = gross − tax − VSE PAID (${money(p.vsePaid,2)}). Meal allowance (${money(p.meals,2)}) isn't taxed. ${slip ? "Bonus and VSE PAID are from your payslip." : (S.bonuses||{})[curF] != null ? "Bonus is the amount you typed in for this pay." : "Bonus is an estimate. Tap the bonus box to put in this pay's real bonus."}</div>`;
+  note += `<div class="small muted num">Take-home = gross − tax − VSE PAID (${money(p.vsePaid,2)}). Meal allowance (${money(p.meals,2)}) isn't taxed. ${slip ? "Bonus and VSE PAID are from your payslip." : (S.bonuses||{})[curF] != null ? "Bonus is the amount you typed in for this pay." : (bonusGuide().src === "none" ? "Bonus is $0 until you add payslips (then it's your average). Tap the bonus box to put in this pay's real bonus." : "Bonus is an estimate. Tap the bonus box to put in this pay's real bonus.")}</div>`;
   if(p.overScr) note += `<div class="note" style="margin-top:8px">More than 27 scratches in the 28-day period, so the VSE minimum salary doesn't apply to this pay (EBA 18.1.3).</div>`;
   if(p.topUp>0) note += `<div class="note" style="margin-top:8px">You're under the VSE minimum (${money(p.minF,2)}) by <b class="num">${money(p.topUp,2)}</b>. You'll still be paid the minimum, and that gap comes back out of later pays that go over it.</div>`;
   if(p.planned>0){
@@ -2091,7 +2109,15 @@ function renderSetup(){
   $("setScrAnchor").value = S.settings.scrAnchor || S.settings.anchor;
   $("setPanelStart").value = S.settings.panelStart || "";
   if(document.activeElement !== $("setPanelCycle")) $("setPanelCycle").value = S.settings.panelCycle || "";
-  for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]]) if(document.activeElement !== $(id)) $(id).value = S.settings[key];
+  for(const [id,key] of [["setVsePaid","vsePaid"],["setLeavePay","leavePay"]]) if(document.activeElement !== $(id)) $(id).value = S.settings[key];
+  { const g = bonusGuide(), own = g.src === "set";
+    if(document.activeElement !== $("setBonus")){ $("setBonus").value = own ? g.amt : ""; $("setBonus").placeholder = own ? "" : g.amt.toFixed(2) + " (automatic)"; }
+    $("setBonusHelp").innerHTML = own
+      ? `You've set your own guide. Clear this box to go back to the average from your payslips.`
+      : g.src === "slips"
+        ? `Worked out from your payslips: average of ${g.n} (${money(g.lo,2)}–${money(g.hi,2)}). It updates each time you add a payslip. Type a number here to use your own guide instead.`
+        : `Starts at $0. Add your payslips (Calendar tab, bottom) and this becomes the average bonus from them. Or type your own guide here.`;
+    $("setBonusHelp").innerHTML += ` To put in one pay's real bonus, tap the bonus box on the Pay tab.`; }
   if(!$("fillStart").value) $("fillStart").value = monday(todayKey());
   $("fillPbtWeek").innerHTML = PBT16.map((p,i)=>`<option value="${i}">Week ${i+1}: ${p.replace(/X/g,"·")}</option>`).join("");
   const hk = Object.keys(S.hols).sort().filter(k=>k>=add(todayKey(),-60));
@@ -2531,7 +2557,10 @@ $("payKpis").addEventListener("click", e => {
   S.bonuses = { ...(S.bonuses || {}) }; delete S.bonuses[curF]; persist(); renderAll(); toast("Bonus back to the estimate");
 });
 $("payKpis").addEventListener("focusin", e => { if(e.target.id === "bonusIn") e.target.select(); });
-for(const [id,key] of [["setBonus","bonus"],["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
+$("setBonus").onchange = e => { const v = e.target.value.trim();
+  S.settings.bonus = v === "" ? null : Math.max(0, Math.round((Number(v)||0)*100)/100); persist(); renderAll();
+  toast(v === "" ? "Bonus guide: average from your payslips" : `Bonus guide: ${money(S.settings.bonus,2)}`); };
+for(const [id,key] of [["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
   $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
 $("jobGradeList").onchange = e => { const id = e.target.dataset.jobg; if(!id) return; const j = JOB(id), g = Number(e.target.value);
   const old = jobG(j);
