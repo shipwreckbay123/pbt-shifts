@@ -511,7 +511,7 @@ details.imp .btn{min-height:40px;font-size:14px}
         <div>Extra hours (extensions or early starts) are ×2 Mon–Sat and ×2.5 Sunday. On a public holiday or closed port day, extra hours use the holiday rate. That last part is my best reading of the agreement, so check it against your payslip.</div>
         <div>Six in a row: you can't work more than six shifts in a row, sick days included (Part B 1.11.1). After six, the next day is set to Off automatically. If you put a shift there yourself, it's kept and you get a warning.</div>
         <div>Scratches: up to 27 scratched shifts per 28-day period (two pay fortnights). Go over 27 and the VSE minimum salary doesn't apply for that period (18.1.3, 18.3.1). Scratch days aren't paid.</div>
-        <div>A sick day (personal/carer's leave) pays 7 hours at $55.50 ($388.51), the same as your payslips show.</div>
+        <div>A sick day (personal/carer's leave) pays 7 hours at the leave rate ($55.50 an hour, $388.51 a day since Feb 2026), the same as your payslips show.</div>
         <div>Meal allowance is added automatically where your payslips show it: shifts paid at the Sunday rate, shifts with an extension, and holidays worked. You can untick it on any shift.</div>
         <div>Holidays (Part B 1.21.4): a closed port day covers its day, evening and the night starting that evening. A public holiday covers the night starting the evening before, then the day and evening. The night starting on the holiday evening is a normal shift.</div>
         <div>Pay fortnights run Monday to Sunday, matching your payslips (for example 12–25 Oct 2026, paid Thu 29 Oct). If a fortnight's earnings are under the VSE minimum salary, you're paid the minimum and the gap is recovered from later pays (18.5.5).</div>
@@ -689,8 +689,8 @@ details.imp .btn{min-height:40px;font-size:14px}
         <div class="small muted" id="setBonusHelp"></div></div>
       <div class="field"><label for="setVsePaid">VSE PAID deduction per pay</label><input type="number" id="setVsePaid" step="0.01" min="0" inputmode="decimal">
         <div class="small muted">Comes out before tax and pays for your self-funded VSE days.</div></div>
-      <div class="field"><label for="setLeavePay">Pay for a self-funded RDO</label><input type="number" id="setLeavePay" step="0.01" min="0" inputmode="decimal">
-        <div class="small muted">Your payslips show 7h × $55.50 = $388.51.</div></div>
+      <div class="field"><label for="setLeavePay">Pay for a sick day or self-funded RDO</label><input type="number" id="setLeavePay" step="0.01" min="0" inputmode="decimal">
+        <div class="small muted">Leave empty and it works it out by itself: 7 hours at the leave rate on your payslips ($53.37 from Feb 2025, $55.50 from Feb 2026), going up with each pay rise. Type a number to use your own amount instead.</div></div>
     </div>
 
     <h2>Job grades</h2>
@@ -981,7 +981,7 @@ const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">"
 function blankState(){
   return { v:2, updatedAt:0, shifts:{}, payslips:{}, hols:{...DEFAULT_HOLS},
     settings:{ v:2, grade:2, night:"start", anchor:"2026-10-26", phUnworked:true,
-      bonus:null, vsePaid:149.43, leavePay:388.51,
+      bonus:null, vsePaid:149.43, leavePay:null,
       panelStart:"2026-10-27", panelCycle:"NEID", showPanel:true, scrAnchor:"2026-10-26", yearMode:"fy" } };
 }
 // From payslips: pay fortnights run Mon–Sun (e.g. 12 Oct – 25 Oct 2026, paid the Thursday after);
@@ -998,6 +998,8 @@ function migrate(st){
   for(const k in st.shifts){ const s = st.shifts[k]; if(s.auto === "six" && s.note === "Must be off: 6 in a row") s.note = ""; }
   // Nov 2026: the bonus guide is worked out from each person's own payslips (was a fixed $240 for everyone; done once)
   if(!st.settings.bonusAutoV1){ st.settings.bonus = null; st.settings.bonusAutoV1 = 1; }
+  // Nov 2026: leave pay (sick, RDO, annual) follows the pay rise dates by itself (was a fixed $388.51; done once)
+  if(!st.settings.leavePayAutoV1){ st.settings.leavePay = null; st.settings.leavePayAutoV1 = 1; }
   // Nov 2026: days marked Off that aren't 6 and out are Left off (done once)
   if(!st.settings.leftOffV1){
     for(const k in st.shifts){ const s = st.shifts[k]; if(s.type === "O" && s.auto !== "six"){ s.type = "U"; s.auto = "left"; } }
@@ -1149,8 +1151,16 @@ const SCR_LIMIT = 27;
 function defaultScr(k){ const p = panelFor(k); return "DEN".includes(p) && p ? p : "D"; }
 function scrPeriodStart(k){ const a = S.settings.scrAnchor || S.settings.anchor || "2026-10-26"; return add(a, Math.floor(diffDays(a,k)/28)*28); }
 function scrCount(start){ let n = 0; for(let i=0;i<28;i++){ const sh = S.shifts[add(start,i)]; if(sh && sh.type==="X") n += (sh.scr||"D").length; } return n; }
-function annualDayPay(k){ return step(k).min / 52 / 5 * 1.275; }
-function sickDayPay(k){ return Number(S.settings.leavePay) || 388.51; } // 7h × $55.50, as on your payslips
+// Leave hourly rate DP World pays for sick, self-funded RDO and annual leave days (7 hours a day), off the payslips:
+// $53.37 from Feb 2025 (Jan 2026: ANN LEAVE 70h = $3,735.90) and $55.50 from Feb 2026 (shown as $55.50, but 7h = $388.51,
+// 14h = $777.02, 21h = $1,165.53, so really $55.5014). Other years: VSE minimum salary ÷ 1761.2 (that gives the same
+// two rates to within half a cent), so the Feb 2027 rise follows the STEPS table by itself.
+const LEAVE_HR = { "2025-02-01": 53.37, "2026-02-01": 55.5014 };
+function leaveHr(k){ const st = step(k); return LEAVE_HR[st.from] ?? Math.round(st.min / 1761.2 * 10000) / 10000; }
+// Annual leave day: 7h at the leave rate + 27.5% leave loading (Jan 2026 payslip: ANN LEAVE 70h × $53.37 + LEAVE LOAD)
+function annualDayPay(k){ const base = r2(7 * leaveHr(k)); return base + r2(base * 0.275); }
+// Sick day / self-funded RDO: 7h at the leave rate, unless you've put your own amount in Setup
+function sickDayPay(k){ const own = S.settings.leavePay; return own != null && own !== "" ? Number(own)||0 : r2(7 * leaveHr(k)); }
 // EBA 30.5: a VSE who doesn't work a public holiday or closed port day is paid 8 hours at the Grade 2 rate.
 // sh = the day's entry (or a draft from the day sheet). Returns {hol, amt} or null.
 // Any Day/Evening/Night/Irregular shift that belongs to the holiday (worked or planned) means it's worked instead.
@@ -1174,11 +1184,11 @@ function periodPay(from, to, includePlanned){ // inclusive range of days
     if(sh && sh.type==="S" && !holUnworked(k, sh)){ // personal/carer's leave: 1/5 of the weekly VSE Ops minimum salary (23.4.2); on a public holiday the holiday pay applies instead
       const amt = sickDayPay(k); rows.push({k, sickPay:true, sh, c:{gross:amt}}); sick += amt;
     }
-    if(sh && sh.type==="A" && !sh.nopay && !holUnworked(k, sh)){ // annual leave: 1/5 of weekly VSE minimum + 27.5% loading (22.5.2)
+    if(sh && sh.type==="A" && !sh.nopay && !holUnworked(k, sh)){ // annual leave: 7h at the leave rate + 27.5% loading (22.5.2, as paid on payslips)
       const amt = annualDayPay(k); rows.push({k, annPay:true, sh, c:{gross:amt}}); annual += amt;
     }
     if(sh && sh.type==="L" && sh.paid !== false){ // VSE self-funded leave day (7h at $55.50 on payslips)
-      const amt = Number(S.settings.leavePay)||0;
+      const amt = sickDayPay(k);
       if(amt){ rows.push({k, leavePay:true, sh, c:{gross:amt}}); leave += amt; }
     }
     // unworked public holiday / CPD payment (VSE): 8h x Grade 2. Past and future days alike;
@@ -1740,7 +1750,7 @@ function leaveFrom(sl, to, usedTo, pays){
     }
     [aE, aA] = grow(aE, aA, LEAVE_YEAR.ann/365); [sE, sA] = grow(sE, sA, LEAVE_YEAR.sick/365);
   }
-  const topUp = (Number(sl.vsePaid)||0) / ((Number(S.settings.leavePay)||388.51)/7);
+  const topUp = (Number(sl.vsePaid)||0) / leaveHr(sl.from);
   const minus = (x, h) => x === null || x === undefined ? null : x - h;
   return { sl, pays, used, topUp, rolled, to,
     ann: minus(aE, used.ann*7), annAcc: aA ?? null, sick: minus(sE, used.sick*7), sickAcc: sA ?? null,
@@ -2140,7 +2150,8 @@ function renderSetup(){
   $("setScrAnchor").value = S.settings.scrAnchor || S.settings.anchor;
   $("setPanelStart").value = S.settings.panelStart || "";
   if(document.activeElement !== $("setPanelCycle")) $("setPanelCycle").value = S.settings.panelCycle || "";
-  for(const [id,key] of [["setVsePaid","vsePaid"],["setLeavePay","leavePay"]]) if(document.activeElement !== $(id)) $(id).value = S.settings[key];
+  if(document.activeElement !== $("setVsePaid")) $("setVsePaid").value = S.settings.vsePaid;
+  if(document.activeElement !== $("setLeavePay")){ const own = S.settings.leavePay; $("setLeavePay").value = own != null && own !== "" ? own : ""; $("setLeavePay").placeholder = `${r2(7*leaveHr(todayKey())).toFixed(2)} (automatic)`; }
   { const g = bonusGuide(), own = g.src === "set";
     if(document.activeElement !== $("setBonus")){ $("setBonus").value = own ? g.amt : ""; $("setBonus").placeholder = own ? "" : g.amt.toFixed(2) + " (automatic)"; }
     $("setBonusHelp").innerHTML = own
@@ -2313,7 +2324,7 @@ function syncSheet(){
   $("shWx").innerHTML = wxSheetLine(sheetDay, draft.type, draft.ext);
   const dt = $("shDayType").value;
   const c = paid ? calcShift(sheetDay, {...draft, hol: dt}) : null;
-  const lp = Number(S.settings.leavePay)||0;
+  const lp = sickDayPay(sheetDay);
   renderWorth(c);
   const hp = !paid && draft.type !== "I" && draft.type !== "L" ? holUnworked(sheetDay, {...draft, hol: dt}) : null;
   $("shPreview").innerHTML = hp
@@ -2321,11 +2332,11 @@ function syncSheet(){
     : draft.type==="A" && S.shifts[sheetDay] && S.shifts[sheetDay].nopay
     ? `<div class="small muted">Weekend of an annual leave week. The week is paid as 5 days (Mon–Fri), so this day isn't paid on its own.</div>`
     : draft.type==="A" && !$("shAlWeekBox").hidden && $("shAlWeek").checked
-    ? `<div><div class="lbl">Annual leave week pays</div><div class="small muted">1/52 of the VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay)*5,2)}</div>`
+    ? `<div><div class="lbl">Annual leave week pays</div><div class="small muted">35 hours at ${money(leaveHr(sheetDay),2)} + 27.5% loading, as on your payslips</div></div><div class="v num">${money(annualDayPay(sheetDay)*5,2)}</div>`
     : draft.type==="A"
-    ? `<div><div class="lbl">Annual leave day pays</div><div class="small muted">1/5 of weekly VSE minimum + 27.5% loading (EBA 22.5.2)</div></div><div class="v num">${money(annualDayPay(sheetDay),2)}</div>`
+    ? `<div><div class="lbl">Annual leave day pays</div><div class="small muted">7 hours at ${money(leaveHr(sheetDay),2)} + 27.5% loading, as on your payslips</div></div><div class="v num">${money(annualDayPay(sheetDay),2)}</div>`
     : draft.type==="S"
-    ? `<div><div class="lbl">Sick day pays</div><div class="small muted">7 hours at $55.50, the same as your payslips</div></div><div class="v num">${money(sickDayPay(sheetDay),2)}</div>`
+    ? `<div><div class="lbl">Sick day pays</div><div class="small muted">7 hours at ${money(leaveHr(sheetDay),2)}, the same as your payslips</div></div><div class="v num">${money(sickDayPay(sheetDay),2)}</div>`
     : c && c.exH
     // With an extension: the shift and the extension as two figures (the payslip has them on separate lines,
     // and the meal allowance sits with the extension there too), then the total.
@@ -2591,7 +2602,8 @@ $("payKpis").addEventListener("focusin", e => { if(e.target.id === "bonusIn") e.
 $("setBonus").onchange = e => { const v = e.target.value.trim();
   S.settings.bonus = v === "" ? null : Math.max(0, Math.round((Number(v)||0)*100)/100); persist(); renderAll();
   toast(v === "" ? "Bonus guide: average from your payslips" : `Bonus guide: ${money(S.settings.bonus,2)}`); };
-for(const [id,key] of [["setVsePaid","vsePaid"],["setLeavePay","leavePay"]])
+$("setLeavePay").onchange = e => { const v = e.target.value.trim(); S.settings.leavePay = v === "" ? null : Math.max(0, Number(v)||0); persist(); renderAll(); };
+for(const [id,key] of [["setVsePaid","vsePaid"]])
   $(id).onchange = e => { S.settings[key] = Math.max(0, Number(e.target.value)||0); persist(); renderAll(); };
 $("jobGradeList").onchange = e => { const id = e.target.dataset.jobg; if(!id) return; const j = JOB(id), g = Number(e.target.value);
   const old = jobG(j);
